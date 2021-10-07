@@ -182,7 +182,7 @@ void setup() {
   /**********************************************************/
   cprintStatus(STATUS_BOOT);
   /** Play a little jingle while keyboard finishes initializing **/
-  #ifndef JINGLEOFF
+  #ifndef JINGLE_OFF
   playJingle();
   #endif
   delay(1000);
@@ -197,7 +197,9 @@ void loop() {
   if (keyboard.available() || Serial.available()) {
     if( keyboard.available() ) {
       ascii = keyboard.read();        /** Read key pressed **/
+      #ifndef SOUND_FEEDBACK_OFF
       tone(SOUND, 750, 5);            /** Clicking sound for auditive feedback to key presses **/
+      #endif
       if (!cpurunning) cprintStatus(STATUS_DEFAULT);/** Update status bar **/
     }
     else {
@@ -595,12 +597,16 @@ void dir() {
       for (x = 2; x < 40; x++) cprintChar(x, 29, ' '); /** Hide editline while waiting for key press **/
       while (!keyboard.available());/** Wait for a key to be pressed **/
       if (keyboard.read() == PS2_ESC) { /** If the user pressed ESC, break and exit **/
+        #ifndef SOUND_FEEDBACK_OFF
         tone(SOUND, 750, 5);      /** Clicking sound for auditive feedback to key press **/
+        #endif
         root.close();             /** Close the directory before exiting **/
         cprintStatus(STATUS_READY);
         break;
       } else {
+        #ifndef SOUND_FEEDBACK_OFF
         tone(SOUND, 750, 5);      /** Clicking sound for auditive feedback to key press **/
+        #endif
         cls();                    /** Clear the screen and... **/
         y = 2;                    /** ...go back tot he top of the screen **/
       }
@@ -752,7 +758,7 @@ void center(String text) {
   cprintString(2+(38-text.length())/2, 27, text);
 }
 
-#ifndef JINGLEOFF
+#ifndef JINGLE_OFF
 void playJingle() {
   delay(500);           /** Wait for possible preceding keyboard click to end **/
   tone(SOUND, 261, 50);

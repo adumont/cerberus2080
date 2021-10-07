@@ -1,4 +1,4 @@
-ARDUINO_BUILDER_OPT:= -prefs="build.extra_flags=-DJINGLEOFF -DTEST1" 	# -verbose
+ARDUINO_BUILDER_OPT:= -prefs="build.extra_flags=-DJINGLE_OFF -DSOUND_FEEDBACK_OFF" 	# -verbose
 
 BOARD = arduino:avr:uno
 
