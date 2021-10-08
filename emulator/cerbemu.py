@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import sys
 import os
 import time
 import curses
@@ -13,7 +12,6 @@ import argparse
 
 from py65.devices.mpu65c02 import MPU as CMOS65C02
 from py65.memory import ObservableMemory
-from py65.utils import console
 
 # Argument parsing
 parser = argparse.ArgumentParser()
@@ -35,7 +33,7 @@ def cpuThreadFunction(ch,win,dbgwin, queue):
         memory[start_address:start_address + len(bytes)] = bytes
 
     def variable_write(address, value):
-        dbgwin.addstr(0,0, "LINE: %04X ROW: %02X COL: %02X " % ( getWord(0x00FE), getByte(0x00FE-1), getByte(0x00FE-2) ) )
+        dbgwin.addstr(1,0, "LINE: %04X ROW: %02X COL: %02X " % ( getWord(0x00FE), getByte(0x00FE-1), getByte(0x00FE-2) ) )
         dbgwin.noutrefresh()
         curses.doupdate()
 
@@ -57,8 +55,20 @@ def cpuThreadFunction(ch,win,dbgwin, queue):
     def getByte(address):
         return mpu.memory[address]
 
+
     def getWord(address):
         return mpu.memory[address] + 256*mpu.memory[address+1]
+
+
+    def nmi():
+        # triggers a NMI IRQ in the processor
+        # this is very similar to the BRK instruction
+        mpu.stPushWord(mpu.pc)
+        mpu.p &= ~mpu.BREAK
+        mpu.stPush(mpu.p | mpu.UNUSED)
+        mpu.p |= mpu.INTERRUPT
+        mpu.pc = mpu.WordAt(mpu.NMI)
+        mpu.processorCycles += 7        
 
     mpu = CMOS65C02()
     mpu.memory = 0x10000 * [0xEA]
@@ -88,6 +98,8 @@ def cpuThreadFunction(ch,win,dbgwin, queue):
 
     started=True
 
+    delay=0.0001
+
     while not exit_event.is_set():
         mpu.step()
 
@@ -95,9 +107,16 @@ def cpuThreadFunction(ch,win,dbgwin, queue):
         if mpu.memory[0x0200] == 0 and not queue.empty():
             mpu.memory[0x0200]=1
             mpu.memory[0x0201]=queue.get()
+            nmi()
 
-        time.sleep(0.0001)
-        # time.sleep(0.1)
+        # dbgwin.addstr(5,0, "%02X %02X %02X" % ( getByte(mpu.pc), getByte(mpu.pc+1), getByte(mpu.pc+2)  ) )
+        # dbgwin.noutrefresh()
+
+        dbgwin.addstr(0,0, "PC: %04X Cycles: %d" % ( mpu.pc, mpu.processorCycles ) )
+        dbgwin.noutrefresh()
+
+        curses.doupdate()
+        time.sleep(delay)
 
 def exit():
     exit_event.set()

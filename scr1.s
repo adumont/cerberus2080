@@ -44,6 +44,7 @@ RES_vec:
   stz MAILFLAG
 
 @wait_key:
+  ; wai       ; I can't make it work in py65... :(
   lda MAILFLAG
   beq @wait_key
 
@@ -215,9 +216,6 @@ scroll_up:
 @end:
   ply
   rts
-
-
-
 
 ; Interrupts routines
 
