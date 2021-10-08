@@ -27,12 +27,17 @@ code = locale.getpreferredencoding()
 
 exit_event = threading.Event()
 
-def cpuThreadFunction(ch,win, queue):
+def cpuThreadFunction(ch,win,dbgwin, queue):
 
     started=False
 
     def load(memory, start_address, bytes):
         memory[start_address:start_address + len(bytes)] = bytes
+
+    def variable_write(address, value):
+        dbgwin.addstr(0,0, "LINE: %04X ROW: %02X COL: %02X " % ( getWord(0x00FE), getByte(0x00FE-1), getByte(0x00FE-2) ) )
+        dbgwin.noutrefresh()
+        curses.doupdate()
 
     def vram_write(address, value):
         if not started:
@@ -40,6 +45,8 @@ def cpuThreadFunction(ch,win, queue):
 
         address -= 0xF800
         x,y = divmod(address,40)
+        if value == 0:
+            value = 0x20
         try:
             win.addstr(x,y, chr(value))
             win.noutrefresh()
@@ -60,6 +67,7 @@ def cpuThreadFunction(ch,win, queue):
 
     m = ObservableMemory(subject=mpu.memory, addrWidth=addrWidth)
     m.subscribe_to_write(range(0xF800,0xF800+30*40), vram_write)
+    m.subscribe_to_write(range(0x00FF-4,0x00FF), variable_write)
     mpu.memory = m
 
     if args.addr and str(args.addr).startswith("0x"):
@@ -84,11 +92,12 @@ def cpuThreadFunction(ch,win, queue):
         mpu.step()
 
         # any key pressed?
-        if not queue.empty():
+        if mpu.memory[0x0200] == 0 and not queue.empty():
             mpu.memory[0x0200]=1
             mpu.memory[0x0201]=queue.get()
 
         time.sleep(0.0001)
+        # time.sleep(0.1)
 
 def exit():
     exit_event.set()
@@ -135,7 +144,7 @@ def main(stdscr):
     queue = Queue()
 
     # create computer thread
-    t=threading.Thread( target=cpuThreadFunction, args=("", cpuwin, queue) )
+    t=threading.Thread( target=cpuThreadFunction, args=("", cpuwin, dbgwin, queue) )
     t.start()
 
     # main thread for getting keypress
@@ -154,9 +163,14 @@ def main(stdscr):
             break
         else:
             msgwin.erase()
-            msgwin.addstr(0,0, 'received [%s] [$%02X]' % (chr(key) , key) )
+            if key == 0x0A :
+                msgwin.addstr(0,0, 'received [$%02X]' % (key) )
+            else:
+                msgwin.addstr(0,0, 'received [%s] [$%02X]' % (chr(key) , key) )
+
             if key in (0x7f, 0x107):
                 key=8
+
             queue.put(key)
             
         msgwin.noutrefresh()
