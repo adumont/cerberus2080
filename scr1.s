@@ -43,18 +43,40 @@ RES_vec:
   ldy #0
   stz MAILFLAG
 
+loop:
+  jsr put_cursor
+  jsr getc
+  jsr erase_cursor
+  jsr putc
+  bra loop
+
+getc:
 @wait_key:
   ; wai       ; I can't make it work in py65... :(
   lda MAILFLAG
   beq @wait_key
 
-  ; erase cursor
-  lda #SPACE
-  ldy COL
-  sta (LINE),y  
-
   lda MAILBOX
 
+  stz MAILFLAG
+
+  rts
+
+erase_cursor:
+  pha
+  lda #SPACE
+  ldy COL
+  sta (LINE),y
+  pla
+  rts
+
+put_cursor:
+  lda #CURSOR
+  ldy COL
+  sta (LINE),y
+  rts
+
+putc:
   cmp #08
   beq @backspace
 
@@ -66,7 +88,7 @@ RES_vec:
   INC COL   ; useful??
   
   cpy #MAX_COL
-  bne @clear    ; not reached end of line --> clear mailflag and next key
+  bne @end    ; not reached end of line --> clear mailflag and next key
 
 @return:
 ; reached end of line or Return
@@ -81,7 +103,7 @@ RES_vec:
 ; yes last row --> don't inc ROW, scroll everything up
 
   jsr scroll_up
-  bra @clear    ; --> clear mailflag and next key
+  bra @end    ; --> rts
 ; else (not last row)
 @not_last_row:  
   ; LINE<-LINE+MAX_COL
@@ -94,7 +116,7 @@ RES_vec:
   sta LINE+1
   ; ROW++
   inc ROW   
-  bra @clear    ; --> clear mailflag and next key
+  bra @end    ; --> rts
 
 @backspace:
   lda #SPACE
@@ -107,17 +129,8 @@ RES_vec:
 @skip:
   sta (LINE),y
 
-@clear:
-  stz MAILFLAG
-
-  lda #CURSOR
-  ldy COL
-  sta (LINE),y
-
-  bra @wait_key
-
 @end:
-  BRA @end
+  rts
 
 ;--------------------------------------
 
