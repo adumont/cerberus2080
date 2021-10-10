@@ -467,13 +467,16 @@ void list(String address) {
   /** Lists the contents of memory from the given address, in a compact format **/
   byte i, j;                      /** Just counters **/
   unsigned int addr;              /** Memory address **/
+  char tmp[10];
+
   if (address == "") addr = 0;
   else addr = strtol(address.c_str(), NULL, 16); /** Convert hexadecimal address string to unsigned int **/
   for (i = 2; i < 25; i++) {
-    cprintString(3, i, "0x");
-    cprintString(5, i, String(addr, HEX));
+    sprintf(tmp, "0x%0.4X", addr);
+    cprintString(3, i, tmp);
     for (j = 0; j < 8; j++) {
-      cprintString(12+(j*3), i, String(cpeek(addr++), HEX)); /** Print bytes in HEX **/
+      sprintf(tmp, "%0.2X", cpeek(addr++));
+      cprintString(12+(j*3), i, tmp);
     }
   }
 }
