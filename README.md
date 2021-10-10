@@ -52,7 +52,7 @@ make flash
 - [Andy Toone's 0xFE Bios](https://github.com/atoone/CERBERUS2080/tree/main/CAT)
 - [Gordon Henderson's BIOS](https://project-downloads.drogon.net/cerberus2080/)
 - [Dean Belfield BreakIntoProgram's BIOS](https://github.com/breakintoprogram/cerberus-bbc-basic/tree/main/cat)
-- The Byte Attic's original BIOS
+- [The Byte Attic's original BIOS](https://github.com/TheByteAttic/CERBERUS2080/tree/main/CAT)
 
 # Emulator
 
