@@ -4,6 +4,7 @@
 - [Introduction](#introduction)
 - [BIOS](#bios)
   - [Build and flash the BIOS](#build-and-flash-the-bios)
+  - [Serial console](#serial-console)
   - [Other available BIOS](#other-available-bios)
 - [Emulator](#emulator)
   - [Build the kernel for the emulator](#build-the-kernel-for-the-emulator)
@@ -11,6 +12,8 @@
   - [Build the kernel for Cerberus](#build-the-kernel-for-cerberus)
   - [Disassemble the kernel binary](#disassemble-the-kernel-binary)
   - [cl65 linker config files](#cl65-linker-config-files)
+- [Cerberus2080 Serial Programmer](#cerberus2080-serial-programmer)
+  - [Send a file to Cerberus:](#send-a-file-to-cerberus)
 - [Credits](#credits)
 - [References](#references)
 
@@ -27,6 +30,7 @@ For now I've taken Andy Toone's 0xFE BIOS as code base, and I have made some min
 - Boots in 6502 fast mode by default
 - Write default values to pins *before* setting their mode (we don't want to output unknown/unexpected value in the board)
 - Libs are included in the sketch folder, under libraries/
+- Enhanced memory dump formatting (using 0x%0.4X and %0.2X)
 - Added a couple of build options (see in Makefile):
   - JINGLE_OFF: disable the boot Jingle
   - SOUND_FEEDBACK_OFF: disable the keys feedback sound
@@ -45,6 +49,18 @@ By using the Makefile, building and flashing the BIOS is a matter of running a c
 cd bios/CERBERUS_2080_BIOS
 make build
 make flash
+```
+
+Notes:
+- Be sure to insert the USB FTDI dongle in the right position
+- You need to power the Cerberus board before flashing the BIOS (you can see the USB dongle red led is on)
+
+## Serial console
+
+0xFE BIOS added a serial access to the BIOS. at 9600 8N1. You can use `minicom` to access it:
+
+```
+minicom -b 9600
 ```
 
 ## Other available BIOS
@@ -110,6 +126,54 @@ There are two cl65 linker config files (layout of the binary by the lcl65 linker
 - lib/emulator.cfg: for the emulator, which include the whole $C000-$FFFF (so it does includes the interrupt vector table)
 - lib/cerberus.cfg: for Cerberus2080, cl65 will not include the interrupt vector table.
 
+# Cerberus2080 Serial Programmer
+
+The `programmer.py` script allows to send commands and load files into Cerberus RAM.
+
+```
+$ ./programmer.py -h
+usage: programmer.py [-h] [-p PORT] {send,run} ...
+
+Cerberus2080 Serial Programmer
+
+positional arguments:
+  {send,run}
+    send                Flash a binary file to Cerberus
+    run                 Send the run command
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -p PORT, --port PORT  USB port to use
+
+Written by @adumont
+```
+
+## Send a file to Cerberus:
+
+```
+usage: programmer.py send [-h] [-a ADDR] file
+
+positional arguments:
+  file                  File to send
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -a ADDR, --addr ADDR  Address (hexadecimal), default: C000
+```
+
+Example 1: Load file at 0xC000 (default)
+
+```
+$ ./programmer.py send scr1.bin
+```
+
+File is sent and loaded into RAM at 0xC000 unless otherwise specified with -a/--addr.
+
+Example 2: Load file at a specific address, for example 0xB000
+
+```
+$ ./programmer.py send -a B000 scr1.bin
+```
 # Credits
 
 - [TheByteAttic/CERBERUS2080: CERBERUS 2080™, the amazing multi-processor 8-bit microcomputer](https://github.com/TheByteAttic/CERBERUS2080)
