@@ -39,7 +39,7 @@ $(BUILD_PATH)/$(INO_FILE).hex: $(BUILD_PATH)/$(INO_FILE).elf
 flash: $(BUILD_PATH)/$(INO_FILE).hex
 	$(ARDUINO_DIR)/hardware/tools/avr/bin/avrdude \
     -C$(ARDUINO_DIR)/hardware/tools/avr/etc/avrdude.conf \
-    -v -patmega2560 -cwiring -P$(USBP) -b115200 -D -Uflash:w:$(<):i
+    -v -patmega328p -carduino -P$(USBP) -b115200 -D -Uflash:w:$(<):i
 
 clean:
 	rm -rf $(BUILD_PATH) $(CACHE_PATH)
