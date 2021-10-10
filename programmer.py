@@ -71,7 +71,7 @@ subparsers = parser.add_subparsers()
 
 parser_put = subparsers.add_parser('send', help='Flash a binary file to Cerberus')
 parser_put.add_argument('file', help='File to send')
-parser_put.add_argument('-a', '--addr', help='Address (hexadecimal), default: C000', default=0xC000 )
+parser_put.add_argument('-a', '--addr', help='Address (hexadecimal), default: C000', default="C000" )
 parser_put.set_defaults(func=cmd_send)
 
 parser_put = subparsers.add_parser('run', help='Send the run command')
