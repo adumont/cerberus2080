@@ -1,5 +1,5 @@
 .pc02 ; 65C02 mode
-.debuginfo      +       ; Generate debug info
+; .debuginfo      +       ; Generate debug info
 .feature string_escapes
 
 ;	*= $8000
@@ -238,9 +238,11 @@ NMI_vec:
 
 ; system vectors
 
+.ifdef EMULATOR
 ;    *=  $FFFA
 .segment  "VECTORS"	
 
     .addr   NMI_vec     ; NMI vector
     .addr   RES_vec     ; RESET vector
     .addr   IRQ_vec     ; IRQ vector
+.endif

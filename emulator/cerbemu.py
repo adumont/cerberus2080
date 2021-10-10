@@ -16,7 +16,7 @@ from py65.memory import ObservableMemory
 # Argument parsing
 parser = argparse.ArgumentParser()
 parser.add_argument('-r','--rom', help='binary rom file', default="forth.bin")
-parser.add_argument('-a','--addr', help='address to load to', default=0x8000)
+parser.add_argument('-a','--addr', help='address to load to', default=0xC000)
 args = parser.parse_args()
 
 
@@ -99,6 +99,7 @@ def cpuThreadFunction(ch,win,dbgwin, queue):
     started=True
 
     delay=0.0001
+    # delay=1
 
     while not exit_event.is_set():
         mpu.step()
@@ -109,8 +110,8 @@ def cpuThreadFunction(ch,win,dbgwin, queue):
             mpu.memory[0x0201]=queue.get()
             nmi()
 
-        # dbgwin.addstr(5,0, "%02X %02X %02X" % ( getByte(mpu.pc), getByte(mpu.pc+1), getByte(mpu.pc+2)  ) )
-        # dbgwin.noutrefresh()
+        dbgwin.addstr(5,0, "%02X %02X %02X" % ( getByte(mpu.pc), getByte(mpu.pc+1), getByte(mpu.pc+2)  ) )
+        dbgwin.noutrefresh()
 
         dbgwin.addstr(0,0, "PC: %04X Cycles: %d" % ( mpu.pc, mpu.processorCycles ) )
         dbgwin.noutrefresh()

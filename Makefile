@@ -1,15 +1,18 @@
+ifdef EMULATOR
+  CFG:=emulator.cfg
+  OPT= --asm-define EMULATOR
+else
+  CFG:=cerberus.cfg
+endif
+
 # build tools & options
 CL65 = cl65
-CLFLAGS  = -v -d -t none -O --cpu 65c02 -C $(LIB)/sbc.cfg -m $*.map
+CLFLAGS  = -v -d -t none -O --cpu 65c02 -C $(LIB)/$(CFG) -m $*.map
 HEXDUMP = hexdump
 HEXDUMP_ARGS = -v -e '1/1 "%02x " "\n"'
 XXD = xxd
 XXD_ARGS = -i
 LIB=lib
-
-ifdef ACIA
-  OPT:= --asm-define ACIA
-endif
 
 %.hex: %.bin
 	$(HEXDUMP) $(HEXDUMP_ARGS) $< > $@

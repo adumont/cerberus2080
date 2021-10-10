@@ -76,19 +76,31 @@ const int IRQpin = KCLK;
 /** intialized in startup.                              **/
 volatile char editLine[38];
 volatile char previousEditLine[38];
-
+  
 /** The above is self-explanatory: it allows for repeating previous command **/
 volatile byte pos = 1;              /** Position in edit line currently occupied by cursor **/
 volatile bool mode = false;         /** false = 6502 mode, true = Z80 mode **/
 volatile bool cpurunning = false;   /** true = CPU is running, CAT should not use the buses **/
 volatile bool gameMode = false;   /** true = CPU is running, CAT should not use the buses **/
-volatile bool fast = false;         /** true = 8 MHz CPU clock, false = 4 MHz CPU clock **/
+volatile bool fast = true;         /** true = 8 MHz CPU clock, false = 4 MHz CPU clock **/
 
 void(* resetFunc) (void) = 0;       /** Software reset fuction at address 0 **/
 
 PS2Keyboard keyboard;
 
 void setup() {
+  /** Write default value to pins BEFORE setting their mode! **/
+  /** Writing default values to some of the output pins **/
+  digitalWrite(RW, HIGH);
+  digitalWrite(SO, LOW);
+  digitalWrite(AOE, LOW);
+  digitalWrite(LD, LOW);
+  digitalWrite(SC, LOW);
+  digitalWrite(CPUSPD, LOW);
+  digitalWrite(CPUSLC, LOW);
+  digitalWrite(CPUIRQ, LOW);
+  digitalWrite(CPUGO, LOW);
+  digitalWrite(CPURST, LOW);
   /** First, declaring all the pins **/
   pinMode(SO, OUTPUT);
   pinMode(SI, INPUT);               /** There will be pull-up and pull-down resistors in circuit **/
@@ -104,17 +116,6 @@ void setup() {
   pinMode(CPUGO, OUTPUT);
   pinMode(CPURST, OUTPUT);
   pinMode(SOUND, OUTPUT);
-  /** Writing default values to some of the output pins **/
-  digitalWrite(RW, HIGH);
-  digitalWrite(SO, LOW);
-  digitalWrite(AOE, LOW);
-  digitalWrite(LD, LOW);
-  digitalWrite(SC, LOW);
-  digitalWrite(CPUSPD, LOW);
-  digitalWrite(CPUSLC, LOW);
-  digitalWrite(CPUIRQ, LOW);
-  digitalWrite(CPUGO, LOW);
-  digitalWrite(CPURST, LOW);
   /** Now reset the CPUs **/
   resetCPUs();
   /** Clear edit line **/
@@ -242,17 +243,19 @@ void loop() {
       }
     /*********************************************************************************************/
     } else if( ascii != 0 ){    /** This is the 'default' condition **/
-      if (!cpurunning) {        /** If a CPU is not running... **/
+      if (!cpurunning) {        
+        /** If a CPU is not running **/
         editLine[pos] = ascii;  /** Put new character in current cursor position **/
         if (pos < 37) pos++;    /** Update cursor position **/
         editLine[pos] = 0;      /** Place cursor to the right of new character **/
         cprintEditLine();       /** Print the updated edit line **/
-      } else {                      /** Now, if a CPU is running... **/
+      } else {                      
+        /** If a CPU is running **/
         digitalWrite(CPUGO, LOW);   /** Pause the CPU and tristate its buses to high-Z **/
         byte mode = cpeek(0x0200);
         cpoke(0x0201, ascii);       /** Put token code of pressed key in the CPU's mailbox, at 0x0201 **/
         if( mode != 0xFE ) {
-           cpoke(0x0200, 0x01);        /** Flag that there is new mail for the CPU waiting at the mailbox **/
+           cpoke(0x0200, 0x01);     /** Flag that there is new mail for the CPU waiting at the mailbox **/
         }
         digitalWrite(CPUGO, HIGH);  /** Let the CPU go **/
         digitalWrite(CPUIRQ, HIGH); /** Trigger an interrupt **/
@@ -489,9 +492,9 @@ void runCode() {
     /** The interrupt service routine simply returns **/
     // FCB0        RTI             40
     cpoke(0xFCB0, 0x40);
-    /** Set reset vector to 0x0202, the beginning of the code area **/
-    cpoke(0xFFFC, 0x02);
-    cpoke(0xFFFD, 0x02);
+    /** Set reset vector to 0xC000, the beginning of the code area **/
+    cpoke(0xFFFC, 0x00);
+    cpoke(0xFFFD, 0xC0);
   } else {                /** We are in Z80 mode **/
     /** The NMI service routine of the Z80 is at 0x0066 **/
     /** It simply returns **/
