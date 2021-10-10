@@ -2,9 +2,6 @@
 ; .debuginfo      +       ; Generate debug info
 .feature string_escapes
 
-;	*= $8000
-.segment  "CODE"
-
 LINE = $FE ; and $FF       ; ADDR (2 bytes), store a LINE ADDR
 ROW = LINE - 1 
 COL = ROW - 1
@@ -18,7 +15,18 @@ MAX_COL = 40
 CURSOR  = '_'
 SPACE   = ' '
 
+.segment  "CODE"
 RES_vec:
+  ; populate Interrupts vectors (in Cerberus RAM)
+  lda #<NMI_vec
+  sta $FFFA
+  lda #>NMI_vec
+  sta $FFFB
+  lda #<IRQ_vec
+  sta $FFFE
+  lda #>IRQ_vec
+  sta $FFFF
+
   CLD             ; clear decimal mode
   LDX #$FF
   TXS             ; set the stack pointer
@@ -231,13 +239,11 @@ scroll_up:
   rts
 
 ; Interrupts routines
-
 IRQ_vec:
 NMI_vec:
 	RTI
 
 ; system vectors
-
 .ifdef EMULATOR
 ;    *=  $FFFA
 .segment  "VECTORS"	
