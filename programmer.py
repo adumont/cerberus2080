@@ -12,11 +12,6 @@ from glob import glob
 def cmd_send(args):
   l = os.stat(args.file).st_size
 
-  # if args.len:
-  #   l = min(l, math.ceil(args.len/64)*64)
-  
-  # ser.write( str.encode("put %s %s\r" % ( args.addr, l) ) )
-
   addr = int(args.addr, 16)
 
   batch = 10
@@ -110,7 +105,7 @@ if __name__ == '__main__':
       bytesize=serial.EIGHTBITS,
       timeout=0
   )
-  print("Connected to programmer on port: " + ser.portstr)
+  print("Connected to Cerberus on port: " + ser.portstr)
 
   sleep(1)
 
