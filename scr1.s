@@ -59,12 +59,12 @@ RES_vec:
   ; jsr clear_screen
 
   ldy #0
+  sty COL
   stz MAILFLAG
 
 loop:
   jsr put_cursor
   jsr getc
-  jsr erase_cursor
   jsr putc
   bra loop
 
@@ -80,6 +80,91 @@ getc:
 
   rts
 
+putc:
+  cmp #KBD_BACK
+  beq @backspace
+
+  cmp #KBD_RET
+  beq @return
+
+  ldy COL
+  sta (LINE),y
+  inc COL
+  
+  cpy #MAX_COL-1
+  beq @return
+  rts
+
+@return:
+  jsr erase_cursor
+
+; reached end of line or Return
+  ; COL<-0
+  stz COL
+  ldy COL
+
+; last row?
+  lda ROW
+  cmp #MAX_ROW-1
+  bne @not_last_row
+; yes last row --> don't inc ROW, scroll everything up
+
+  jsr scroll_up
+  rts
+
+; else (not last row)
+@not_last_row:  
+  ; LINE<-LINE+MAX_COL
+  clc
+  lda LINE
+  adc #MAX_COL
+  sta LINE
+  lda LINE+1
+  adc #0
+  sta LINE+1
+  ; ROW++
+  inc ROW   
+  rts
+
+@backspace:
+  jsr erase_cursor
+  ; dey only if not 0
+  cpy #0
+  bne @goleft1col
+  ; we are at the beginning of a line:
+  ; if first line: can't do anything
+  lda ROW
+  cmp #0
+  beq @erase
+  ; otherwise: move up 1 line:
+  dea
+  sta ROW
+  ; LINE -= MAX_COL
+  sec 
+  lda LINE
+  sbc #MAX_COL
+  sta LINE
+  lda LINE+1
+  sbc #0
+  sta LINE+1
+  ; place cursor on the last col
+  ldy #MAX_COL-1
+  sty COL
+
+  bra @erase
+@goleft1col:
+  dey
+  sty COL
+@erase:
+  lda #SPACE
+  sta (LINE),y
+
+  rts
+
+
+
+;--------------------------------------
+
 erase_cursor:
   pha
   lda #SPACE
@@ -94,61 +179,6 @@ put_cursor:
   sta (LINE),y
   rts
 
-putc:
-  cmp #KBD_BACK
-  beq @backspace
-
-  cmp #KBD_RET
-  beq @return
-
-  sta (LINE),y
-  iny           ; INC_CURSOR --> iny, if y=0 INC CURS+1... check if last line, then scroll up
-  INC COL   ; useful??
-  
-  cpy #MAX_COL
-  bne @end    ; not reached end of line --> clear mailflag and next key
-
-@return:
-; reached end of line or Return
-  ; COL<-0
-  stz COL
-  ldy COL
-
-; last row?
-  lda ROW
-  cmp #MAX_ROW-1
-  bne @not_last_row
-; yes last row --> don't inc ROW, scroll everything up
-
-  jsr scroll_up
-  bra @end    ; --> rts
-; else (not last row)
-@not_last_row:  
-  ; LINE<-LINE+MAX_COL
-  clc
-  lda LINE
-  adc #MAX_COL
-  sta LINE
-  lda LINE+1
-  adc #0
-  sta LINE+1
-  ; ROW++
-  inc ROW   
-  bra @end    ; --> rts
-
-@backspace:
-  lda #SPACE
-
-  ; dey only if not 0
-  cpy #0
-  beq @skip
-  dey           ; DEC_CURSOR
-  sty COL
-@skip:
-  sta (LINE),y
-
-@end:
-  rts
 
 ;--------------------------------------
 

@@ -8,6 +8,8 @@
   - [Other available BIOS](#other-available-bios)
 - [Emulator](#emulator)
   - [Build the kernel for the emulator](#build-the-kernel-for-the-emulator)
+  - [Emulator execution modes](#emulator-execution-modes)
+  - [Disassembler](#disassembler)
 - [Kernel](#kernel)
   - [Build the kernel for Cerberus](#build-the-kernel-for-cerberus)
   - [Disassemble the kernel binary](#disassemble-the-kernel-binary)
@@ -78,7 +80,7 @@ On one hand, the emulator writes any key pressed to RAM using the MAILBOX/MAILFL
 
 On the other hand, the emulator intercepts writes to the Display RAM ($F800-$FCAF) and renders the written char on the emulated screen (left pane).
 
-The right pane shows PC, some variables watches, and the bytes at PC.
+The right pane shows PC, Clock cycles, the 6502 Registers, some variables watches. In step by step mode, the next disassembled instruction will be shown as well.
 
 ## Build the kernel for the emulator
 
@@ -93,6 +95,16 @@ emulator/cerbemu.py -r scr1.bin
 At this early stage it looks like this:
 
 ![](asset/Emulator.gif)
+
+## Emulator execution modes
+
+You can alternate between `Continuous` and `Step by step` modes:
+- Page Down will enter `Step by step` modes. Press Page Down key to run the next instruction.
+- End key will enter `Continuous` modes
+
+## Disassembler
+
+The Emulator will show the next instruction to be run (available in `Step by step` mode only)
 
 # Kernel
 

@@ -6,11 +6,13 @@ import curses
 import threading
 import signal
 import locale
+from disass import render_instr
 from queue import Queue
 
 import argparse
 
 from py65.devices.mpu65c02 import MPU as CMOS65C02
+from py65.utils.conversions import itoa
 from py65.memory import ObservableMemory
 
 # Argument parsing
@@ -25,17 +27,12 @@ code = locale.getpreferredencoding()
 
 exit_event = threading.Event()
 
-def cpuThreadFunction(ch,win,dbgwin, queue):
+def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
 
     started=False
 
     def load(memory, start_address, bytes):
         memory[start_address:start_address + len(bytes)] = bytes
-
-    def variable_write(address, value):
-        dbgwin.addstr(1,0, "LINE: %04X ROW: %02X COL: %02X " % ( getWord(0x00FE), getByte(0x00FE-1), getByte(0x00FE-2) ) )
-        dbgwin.noutrefresh()
-        curses.doupdate()
 
     def vram_write(address, value):
         if not started:
@@ -60,6 +57,19 @@ def cpuThreadFunction(ch,win,dbgwin, queue):
         return mpu.memory[address] + 256*mpu.memory[address+1]
 
 
+    def disass_pane(mode):
+        dbgwin.addstr(0,0, "PC: %04X Cycles: %d" % ( mpu.pc, mpu.processorCycles ) )
+
+        dbgwin.addstr(2,0, "A:%02X  X:%02X  Y:%02X  S:%02X  P:%s" % ( mpu.a, mpu.x, mpu.y, mpu.sp, ( itoa(mpu.p, 2).rjust(8, '0') ) ) )
+
+        dbgwin.addstr(4,0, "LINE: %04X ROW: %02X COL: %02X " % ( getWord(0x00FE), getByte(0x00FE-1), getByte(0x00FE-2) ) )
+
+        if mode == 1:
+            dbgwin.addstr(10,0, render_instr( [ "%04X" % mpu.pc, "%02X" % getByte(mpu.pc), "%02X" % getByte(mpu.pc+1), "%02X" % getByte(mpu.pc+2) ] ) )
+        
+        dbgwin.noutrefresh()
+
+
     def nmi():
         # triggers a NMI IRQ in the processor
         # this is very similar to the BRK instruction
@@ -68,7 +78,8 @@ def cpuThreadFunction(ch,win,dbgwin, queue):
         mpu.stPush(mpu.p | mpu.UNUSED)
         mpu.p |= mpu.INTERRUPT
         mpu.pc = mpu.WordAt(mpu.NMI)
-        mpu.processorCycles += 7        
+        mpu.processorCycles += 7
+
 
     mpu = CMOS65C02()
     mpu.memory = 0x10000 * [0xEA]
@@ -77,7 +88,6 @@ def cpuThreadFunction(ch,win,dbgwin, queue):
 
     m = ObservableMemory(subject=mpu.memory, addrWidth=addrWidth)
     m.subscribe_to_write(range(0xF800,0xF800+30*40), vram_write)
-    m.subscribe_to_write(range(0x00FF-4,0x00FF), variable_write)
     mpu.memory = m
 
     if args.addr and str(args.addr).startswith("0x"):
@@ -106,7 +116,29 @@ def cpuThreadFunction(ch,win,dbgwin, queue):
     delay=0.0001
     # delay=1
 
+    dbgwin.addstr(1,26, "NV-BDIZC" )
+
+    # mode_step = 0       # continuous execution
+    mode_step = 1       # step by step execution
+
+    disass_pane(mode_step)
+    curses.doupdate()
+
+    run_next_step = 0
+
     while not exit_event.is_set():
+        if not queue_step.empty():
+            mode_step = queue_step.get()
+            run_next_step = 1
+
+        if mode_step == 1 and run_next_step == 0:
+            continue
+
+        if mode_step == 1:
+            run_next_step = 0
+        elif mode_step == 0:
+            dbgwin.addstr(10,0, 30 * " " )
+
         mpu.step()
 
         # any key pressed?
@@ -115,12 +147,7 @@ def cpuThreadFunction(ch,win,dbgwin, queue):
             mpu.memory[0x0201]=queue.get()
             nmi()
 
-        dbgwin.addstr(5,0, "%02X %02X %02X" % ( getByte(mpu.pc), getByte(mpu.pc+1), getByte(mpu.pc+2)  ) )
-        dbgwin.noutrefresh()
-
-        dbgwin.addstr(0,0, "PC: %04X Cycles: %d" % ( mpu.pc, mpu.processorCycles ) )
-        dbgwin.noutrefresh()
-
+        disass_pane(mode_step)
         curses.doupdate()
         time.sleep(delay)
 
@@ -167,9 +194,10 @@ def main(stdscr):
     curses.doupdate()
 
     queue = Queue()
+    queue_step = Queue()
 
     # create computer thread
-    t=threading.Thread( target=cpuThreadFunction, args=("", cpuwin, dbgwin, queue) )
+    t=threading.Thread( target=cpuThreadFunction, args=("", cpuwin, dbgwin, queue, queue_step) )
     t.start()
 
     # main thread for getting keypress
@@ -177,7 +205,13 @@ def main(stdscr):
         # wait for a character; returns an int; does not raise an exception.
         key = stdscr.getch()
 
-        if key == 0x1b:
+        if key == 0x152:    # Page DOWN
+            # Enter step by step mode
+            queue_step.put(1)
+        elif key == 0x168:    # End key
+            # Continuous execution
+            queue_step.put(0)
+        elif key == 0x1b:
             # escape key exits
             msgwin.erase()
             msgwin.addstr(0,0, 'Exiting...')
