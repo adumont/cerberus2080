@@ -124,7 +124,7 @@ void setup() {
   Serial.begin(9600);
    
   /** Initialize keyboard library **/
-  keyboard.begin(DataPin, IRQpin);
+  keyboard.begin(DataPin, IRQpin, PS2Keymap_Spanish);
   /** Now access uSD card and load character definitions so we can put something on the screen **/
   if (!SD.begin(chipSelect)) {
     /** SD Card has either failed or is not present **/
@@ -198,6 +198,11 @@ void loop() {
   if (keyboard.available() || Serial.available()) {
     if( keyboard.available() ) {
       ascii = keyboard.read();        /** Read key pressed **/
+
+      char tmp[15];
+      sprintf(tmp, "KEY: %0.2X (%c)\r\n", ascii, ascii);
+      Serial.print(tmp);
+
       #ifndef SOUND_FEEDBACK_OFF
       tone(SOUND, 750, 5);            /** Clicking sound for auditive feedback to key presses **/
       #endif
@@ -215,57 +220,146 @@ void loop() {
         ascii = 0;
       }
     }
-    if (ascii == PS2_ENTER) {       /** This happens if ENTER has been pressed... **/
-      if (!cpurunning) enter();
-    } else if (ascii == PS2_ESC) {  /** This happens if ESC has been pressed... and so on... **/
-      if (cpurunning) {             /** If a CPU has been running, do the below to quit properly **/
-        stopCode();
+    if ( cpurunning ) {
+      // CPU Running
+      switch(ascii) {
+
+        case PS2_ESC:
+          /** If a CPU has been running, do the below to quit properly **/
+          stopCode();
+          break;
+
+        default:
+          if( ascii != 0 ) {
+            digitalWrite(CPUGO, LOW);   /** Pause the CPU and tristate its buses to high-Z **/
+
+            cpoke(0x0201, ascii);       /** Put token code of pressed key in the CPU's mailbox, at 0x0201 **/
+
+            byte requested_mode = cpeek(0x0200);  // we read the if any mode requested by the CPU
+
+            if( requested_mode != 0xFE ) {
+              char tmp[15];
+              sprintf(tmp, "MAIL> %0.2X (%c)\r\n", ascii, ascii);
+              Serial.print(tmp);
+
+              cpoke(0x0200, 0x01);     /** Flag that there is new mail for the CPU waiting at the mailbox **/
+            }
+
+            digitalWrite(CPUGO, HIGH);  /** Let the CPU go **/
+            digitalWrite(CPUIRQ, HIGH); /** Trigger an interrupt **/
+            digitalWrite(CPUIRQ, LOW);
+
+            if( requested_mode == 0xFE ) {
+              /** switch to 'game' mode **/
+              enterGameMode(); 
+            }
+
+          }
       }
-    } else if (ascii == PS2_PAGEDOWN) {
-    } else if (ascii == PS2_PAGEUP) {
-    } else if (ascii == PS2_RIGHTARROW) {
-    } else if (ascii == PS2_UPARROW) {    /** On up arrow, load previous edit line contents **/
-      if (!cpurunning) {
-        for (i = 0; i < 38; i++) editLine[i] = previousEditLine[i];
-        i = 0;
-        while (editLine[i] != 0) i++;
-        pos = i;
-        cprintEditLine();
+          
+    } else {
+      // CPU not running aka BIOS mode
+      switch(ascii) {
+
+        case PS2_ENTER:
+          enter();
+          break;
+
+        case PS2_UPARROW:
+          for (i = 0; i < 38; i++) {
+            editLine[i] = previousEditLine[i];
+          }
+          i = 0;
+          while (editLine[i] != 0) {
+            i++;}
+          pos = i;
+          cprintEditLine();
+          break;
+
+        case PS2_DOWNARROW:
+          /** On down arrow, reset edit line contents **/
+          clearEditLine();
+          break;
+
+        case PS2_DELETE:
+        case PS2_LEFTARROW:
+          /** If DEL, BACKSPACE or LEFT ARROW have been pressed... **/
+          editLine[pos] = 32; /** Put an empty space in current cursor position **/
+          if (pos > 1) pos--; /** Update cursor position, unless reached left-most position already **/
+          editLine[pos] = 0;  /** Put cursor on updated position **/
+          cprintEditLine();   /** Print the updated edit line **/          
+          break;
+
+        case PS2_ESC:
+          // do nothing
+          break;
+
+        default:
+          if( ascii != 0 ){         /** This is the 'default' condition **/
+            editLine[pos] = ascii;  /** Put new character in current cursor position **/
+            if (pos < 37) pos++;    /** Update cursor position **/
+            editLine[pos] = 0;      /** Place cursor to the right of new character **/
+            cprintEditLine();       /** Print the updated edit line **/
+          }
       }
-    } else if (ascii == PS2_DOWNARROW) {  /** On down arrow, reset edit line contents **/
-      if (!cpurunning) clearEditLine();
-    } else if ((ascii == PS2_DELETE) || (ascii == PS2_LEFTARROW)) { /** If DEL, BACKSPACE or LEFT ARROW have been pressed... **/
-      if (!cpurunning) {
-        editLine[pos] = 32; /** Put an empty space in current cursor position **/
-        if (pos > 1) pos--; /** Update cursor position, unless reached left-most position already **/
-        editLine[pos] = 0;  /** Put cursor on updated position **/
-        cprintEditLine();   /** Print the updated edit line **/
-      }
-    /*********************************************************************************************/
-    } else if( ascii != 0 ){    /** This is the 'default' condition **/
-      if (!cpurunning) {        
-        /** If a CPU is not running **/
-        editLine[pos] = ascii;  /** Put new character in current cursor position **/
-        if (pos < 37) pos++;    /** Update cursor position **/
-        editLine[pos] = 0;      /** Place cursor to the right of new character **/
-        cprintEditLine();       /** Print the updated edit line **/
-      } else {                      
-        /** If a CPU is running **/
-        digitalWrite(CPUGO, LOW);   /** Pause the CPU and tristate its buses to high-Z **/
-        byte mode = cpeek(0x0200);
-        cpoke(0x0201, ascii);       /** Put token code of pressed key in the CPU's mailbox, at 0x0201 **/
-        if( mode != 0xFE ) {
-           cpoke(0x0200, 0x01);     /** Flag that there is new mail for the CPU waiting at the mailbox **/
-        }
-        digitalWrite(CPUGO, HIGH);  /** Let the CPU go **/
-        digitalWrite(CPUIRQ, HIGH); /** Trigger an interrupt **/
-        digitalWrite(CPUIRQ, LOW);
-        if( mode == 0xFE ) {
-          /** switch to 'game' mode **/
-          enterGameMode(); 
-        }
-      }
+     
     }
+    // if (ascii == PS2_ENTER) {       /** This happens if ENTER has been pressed... **/
+    //   if (!cpurunning) enter();
+    // } else if (ascii == PS2_ESC) {  /** This happens if ESC has been pressed... and so on... **/
+    //   if (cpurunning) {             /** If a CPU has been running, do the below to quit properly **/
+    //     stopCode();
+    //   }
+    // } else if (ascii == PS2_PAGEDOWN) {
+    // } else if (ascii == PS2_PAGEUP) {
+    // } else if (ascii == PS2_RIGHTARROW) {
+    // } else if (ascii == PS2_UPARROW) {    /** On up arrow, load previous edit line contents **/
+    //   if (!cpurunning) {
+    //     for (i = 0; i < 38; i++) editLine[i] = previousEditLine[i];
+    //     i = 0;
+    //     while (editLine[i] != 0) i++;
+    //     pos = i;
+    //     cprintEditLine();
+    //   }
+    // } else if (ascii == PS2_DOWNARROW) {  
+    //   if (!cpurunning) clearEditLine();
+    // } else if ((ascii == PS2_DELETE) || (ascii == PS2_LEFTARROW)) { /** If DEL, BACKSPACE or LEFT ARROW have been pressed... **/
+    //   if (!cpurunning) {
+    //     editLine[pos] = 32; /** Put an empty space in current cursor position **/
+    //     if (pos > 1) pos--; /** Update cursor position, unless reached left-most position already **/
+    //     editLine[pos] = 0;  /** Put cursor on updated position **/
+    //     cprintEditLine();   /** Print the updated edit line **/
+    //   }
+    /*********************************************************************************************/
+    // } else if( ascii != 0 ){    /** This is the 'default' condition **/
+    //   if (!cpurunning) {        
+    //     /** If a CPU is not running **/
+    //     editLine[pos] = ascii;  /** Put new character in current cursor position **/
+    //     if (pos < 37) pos++;    /** Update cursor position **/
+    //     editLine[pos] = 0;      /** Place cursor to the right of new character **/
+    //     cprintEditLine();       /** Print the updated edit line **/
+    //   } else {                      
+    //     /** If a CPU is running **/
+    //     digitalWrite(CPUGO, LOW);   /** Pause the CPU and tristate its buses to high-Z **/
+    //     byte mode = cpeek(0x0200);
+    //     cpoke(0x0201, ascii);       /** Put token code of pressed key in the CPU's mailbox, at 0x0201 **/
+    //     if( mode != 0xFE ) {
+
+    //       char tmp[15];
+    //       sprintf(tmp, "MAIL> %0.2X (%c)\r\n", ascii, ascii);
+    //       Serial.print(tmp);
+
+    //        cpoke(0x0200, 0x01);     /** Flag that there is new mail for the CPU waiting at the mailbox **/
+    //     }
+    //     digitalWrite(CPUGO, HIGH);  /** Let the CPU go **/
+    //     digitalWrite(CPUIRQ, HIGH); /** Trigger an interrupt **/
+    //     digitalWrite(CPUIRQ, LOW);
+    //     if( mode == 0xFE ) {
+    //       /** switch to 'game' mode **/
+    //       enterGameMode(); 
+    //     }
+    //   }
+    // }
     /*********************************************************************************************/
   }
 }
