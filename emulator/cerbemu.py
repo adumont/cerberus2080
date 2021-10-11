@@ -93,6 +93,11 @@ def cpuThreadFunction(ch,win,dbgwin, queue):
 
     load(mpu.memory, args.addr, program)
 
+    # as we have stripped the vectors out of the binary, we need to populate
+    # the RESET vector, as CAT(BIOS) does.
+    mpu.memory[0xFFFC] = (args.addr & 0xFF)
+    mpu.memory[0xFFFD] = ( args.addr >> 8 ) & 0xFF
+
     # Reset: RESET vector => PC
     mpu.pc=getWord(mpu.RESET)
 

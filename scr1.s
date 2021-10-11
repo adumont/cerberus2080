@@ -15,6 +15,16 @@ MAX_COL = 40
 CURSOR  = '_'
 SPACE   = ' '
 
+.ifdef EMULATOR
+; key codes on Emulator
+KBD_RET  = $0A  ; Return
+KBD_BACK = $08  ; Backspace
+.else
+; key codes on Cerberus
+KBD_RET  = $0D  ; Return
+KBD_BACK = $7F  ; Backspace
+.endif
+
 .segment  "CODE"
 RES_vec:
   ; populate Interrupts vectors (in Cerberus RAM)
@@ -85,10 +95,10 @@ put_cursor:
   rts
 
 putc:
-  cmp #08
+  cmp #KBD_BACK
   beq @backspace
 
-  cmp #$0A
+  cmp #KBD_RET
   beq @return
 
   sta (LINE),y

@@ -5,6 +5,8 @@ else
   CFG:=cerberus.cfg
 endif
 
+include Version.mk
+
 # build tools & options
 CL65 = cl65
 CLFLAGS  = -v -d -t none -O --cpu 65c02 -C $(LIB)/$(CFG) -m $*.map
