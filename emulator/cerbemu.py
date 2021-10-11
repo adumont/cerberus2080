@@ -83,6 +83,7 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
 
     mpu = CMOS65C02()
     mpu.memory = 0x10000 * [0xEA]
+    mpu.memory[0xF800:0xFCAF] =  (0xFCAF-0xF800+1)* [0x20]
 
     addrWidth = mpu.ADDR_WIDTH
 
@@ -137,7 +138,7 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
         if mode_step == 1:
             run_next_step = 0
         elif mode_step == 0:
-            dbgwin.addstr(10,0, 30 * " " )
+            dbgwin.addstr(10,0, 38 * " " )
 
         mpu.step()
 
