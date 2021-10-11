@@ -41,13 +41,37 @@ def cmd_send(args):
       count += len(data)
       addr  += len(data)
 
+
+
       print("  %3.2f %%" % (100.0*count/l), end="\r")
 
       sleep(0.05)
 
+      get_response(show=False)
+
       if count >= l: break
 
   print()
+
+
+def get_response(show=False):
+  exit = False
+  b = []
+
+  while True:
+    for c in ser.read():
+      if c not in (0x0d, 0x0a):
+        b.append(c)
+      if show:
+        print("%c %02X   " % (c,c), end='', flush=True)
+      if c == 0x0A:
+        exit = True
+        break
+    if exit:
+      break
+
+  return b
+
 
 def cmd_run(args):
 
