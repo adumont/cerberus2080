@@ -9,6 +9,25 @@ import math
 
 from glob import glob
 
+def get_response(show=False):
+  exit = False
+  b = []
+
+  while True:
+    for c in ser.read():
+      if c not in (0x0d, 0x0a):
+        b.append(c)
+      if show:
+        print("%c %02X   " % (c,c), end='', flush=True)
+      if c == 0x0A:
+        exit = True
+        break
+    if exit:
+      break
+
+  return b
+
+
 def cmd_send(args):
   l = os.stat(args.file).st_size
 
@@ -35,42 +54,35 @@ def cmd_send(args):
         chkA = ( chkA +   c  ) % 256
         chkB = ( chkB + chkA ) % 256
 
-      print("#%02X%02X\r" % (chkA, chkB) )
-      ser.write( str.encode( "#%02X%02X\r" % (chkA, chkB) ) )
+      chks = chkA << 8 | chkB
+
+      print("#%04X" % chks, end="")
+      ser.write( str.encode( "#%04X\r" % chks ) )
+
+      sleep(0.05)
+
+      b="".join([chr(i) for i in get_response(show=False) ])
+      b=b.strip()
+      b=b.split(" ")
+
+      addr_received = int( b[0], 16 )
+      chks_received = int( b[1], 16 )
+
+      if addr_received == addr or chks_received == chks:
+        # Checksum OK, print a nice Checkmark (unicode 2713)
+        print(' \u2713')
+      else:
+        print(" KO: checksum mismatch")
+        break
 
       count += len(data)
       addr  += len(data)
 
-
-
       print("  %3.2f %%" % (100.0*count/l), end="\r")
-
-      sleep(0.05)
-
-      get_response(show=False)
 
       if count >= l: break
 
   print()
-
-
-def get_response(show=False):
-  exit = False
-  b = []
-
-  while True:
-    for c in ser.read():
-      if c not in (0x0d, 0x0a):
-        b.append(c)
-      if show:
-        print("%c %02X   " % (c,c), end='', flush=True)
-      if c == 0x0A:
-        exit = True
-        break
-    if exit:
-      break
-
-  return b
 
 
 def cmd_run(args):
