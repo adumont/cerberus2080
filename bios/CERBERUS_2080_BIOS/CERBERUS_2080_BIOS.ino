@@ -26,6 +26,10 @@
 #include <SPI.h>
 #include <SD.h>
 
+#ifndef CAT_VERSION
+#define _VERSION_VERSION "unknown"
+#endif
+
 /* The two libraries above are built into the arduino IDE  */
 
 /* Source: https://github.com/PaulStoffregen/PS2Keyboard */
@@ -839,7 +843,7 @@ void cprintStatus(byte status) {
     case STATUS_BOOT:
       /* REMEMBER: The macro "F()" simply tells the compiler to put the string in code memory, so to save dynamic memory */
       center(F("Here we go! Hang on..."));
-      cprintString(30, 25, F("0xFE v1.0"));
+      cprintString(3, 25, F("AD " CAT_VERSION));
       break;
     case STATUS_READY:
       center(F("Alright, done!"));
