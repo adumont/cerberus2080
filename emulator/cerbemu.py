@@ -31,6 +31,10 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
 
     started=False
 
+    hist_depth = 8
+
+    instr = hist_depth*[""]
+
     def load(memory, start_address, bytes):
         memory[start_address:start_address + len(bytes)] = bytes
 
@@ -57,7 +61,7 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
         return mpu.memory[address] + 256*mpu.memory[address+1]
 
 
-    def disass_pane(mode):
+    def disass_pane(mode, instr):
         dbgwin.addstr(0,0, "PC: %04X Cycles: %d" % ( mpu.pc, mpu.processorCycles ) )
 
         dbgwin.addstr(2,0, "A:%02X  X:%02X  Y:%02X  S:%02X  P:%s" % ( mpu.a, mpu.x, mpu.y, mpu.sp, ( itoa(mpu.p, 2).rjust(8, '0') ) ) )
@@ -65,7 +69,10 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
         dbgwin.addstr(4,0, "LINE: %04X ROW: %02X COL: %02X " % ( getWord(0x00FE), getByte(0x00FE-1), getByte(0x00FE-2) ) )
 
         if mode == 1:
-            dbgwin.addstr(10,0, render_instr( [ "%04X" % mpu.pc, "%02X" % getByte(mpu.pc), "%02X" % getByte(mpu.pc+1), "%02X" % getByte(mpu.pc+2) ] ) )
+            instr.append( render_instr( [ "%04X" % mpu.pc, "%02X" % getByte(mpu.pc), "%02X" % getByte(mpu.pc+1), "%02X" % getByte(mpu.pc+2) ] ) )
+            instr = instr[-hist_depth:] # keep last "hist_depth"
+            for i in range(len(instr)):
+                dbgwin.addstr(10+i,0, instr[i] )
         
         dbgwin.noutrefresh()
 
@@ -122,7 +129,7 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
     # mode_step = 0       # continuous execution
     mode_step = 1       # step by step execution
 
-    disass_pane(mode_step)
+    disass_pane(mode_step, instr)
     curses.doupdate()
 
     run_next_step = 0
@@ -130,6 +137,11 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
     while not exit_event.is_set():
         if not queue_step.empty():
             mode_step = queue_step.get()
+            if mode_step == 0:  # back to continuous mode: we clear the disass part
+                instr = hist_depth*[38*" "]
+                for i in range(len(instr)):
+                    dbgwin.addstr(10+i,0, instr[i] )                
+            
             run_next_step = 1
 
         if mode_step == 1 and run_next_step == 0:
@@ -137,8 +149,6 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
 
         if mode_step == 1:
             run_next_step = 0
-        elif mode_step == 0:
-            dbgwin.addstr(10,0, 38 * " " )
 
         mpu.step()
 
@@ -148,7 +158,8 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
             mpu.memory[0x0201]=queue.get()
             nmi()
 
-        disass_pane(mode_step)
+        disass_pane(mode_step, instr)
+
         curses.doupdate()
         time.sleep(delay)
 
