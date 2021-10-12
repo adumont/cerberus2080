@@ -31,27 +31,27 @@
 /* Source: https://github.com/PaulStoffregen/PS2Keyboard */
 #include <PS2Keyboard.h>
 
-/* Source: https://github.com/PaulStoffregen/PS2Keyboard */
+/* Source: https://github.com/PaulStoffregen/TimerOne */
 #include <TimerOne.h>
 
 /* Pinout below defined as per Arduino Uno pin IDs */
 /* The next pins go to SPACER */
-#define SI A5     /* Serial Input, pin 28 on CAT */
-#define SO A4     /* Serial Output, pin 27 on CAT */
-#define SC A3     /* Shift Clock, pin 26 on CAT */
-#define AOE A2    /* Address Output Enable, pin 25 on CAT */
-#define RW A1     /* Memory Read/!Write, pin 24 on CAT */
-#define LD A0     /* Latch Data, pin 23 on CAT */
-#define CPUSLC 5  /* CPU SeLeCt, pin 11 on CAT */
-#define CPUIRQ 6  /* CPU Interrupt ReQuest, pin 12 on CAT */
-#define CPUGO 7   /* CPU Go/!Halt, pin 13 on CAT */
-#define CPURST 8  /* CPU ReSeT, pin 14 on CAT */
-#define CPUSPD 9  /* CPU SPeeD, pin 15 on CAT */
+#define SI A5     /* PC5  Serial Input, pin 28 on CAT */
+#define SO A4     /* PC4  Serial Output, pin 27 on CAT */
+#define SC A3     /* PC3  Shift Clock, pin 26 on CAT */
+#define AOE A2    /* PC2  Address Output Enable, pin 25 on CAT */
+#define RW A1     /* PC1  Memory Read/!Write, pin 24 on CAT */
+#define LD A0     /* PC0  Latch Data, pin 23 on CAT */
+#define CPUSLC 5  /* PD5  CPU SeLeCt, pin 11 on CAT */
+#define CPUIRQ 6  /* PD6  CPU Interrupt ReQuest, pin 12 on CAT */
+#define CPUGO 7   /* PD7  CPU Go/!Halt, pin 13 on CAT */
+#define CPURST 8  /* PB0  CPU ReSeT, pin 14 on CAT */
+#define CPUSPD 9  /* PB1  CPU SPeeD, pin 15 on CAT */
 /* The next pins go to I/O devices */
-#define KCLK 2    /* CLK pin connected to PS/2 keyboard (CAT pin 4) */
-#define KDAT 3    /* DATA pin connected to PS/2 keyboard (CAT pin 5) */
-#define SOUND 4   /* Sound output to buzzer, pin 6 on CAT */
-#define CS 10     /* Chip Select for SD Card, pin 16 on CAT */
+#define KCLK 2    /* PD2  CLK pin connected to PS/2 keyboard (CAT pin 4) */
+#define KDAT 3    /* PD3  DATA pin connected to PS/2 keyboard (CAT pin 5) */
+#define SOUND 4   /* PD4  Sound output to buzzer, pin 6 on CAT */
+#define CS 10     /* PB2  Chip Select for SD Card, pin 16 on CAT */
 /* MISO, MOSI and SCK for SD Card are hardwired in CAT: */
 /* CLK  -> pin 19 on CAT */
 /* MISO -> pin 18 on CAT */
@@ -75,6 +75,32 @@ const int IRQpin = KCLK;
 #define STATUS_ADDRESS_ERROR 9
 #define STATUS_POWER 10
 
+/* Bit manipulation Macros */
+#define SET(x,y) ((x) |= (1 << (y)))
+#define CLEAR(x,y) ((x) &= ~(1<< (y)))
+#define READ(x,y) ((0u == ((x) & (1<<(y))))?0u:1u)
+#define TOGGLE(x,y) ((x) ^= (1<<(y)))
+
+/* Port Manipulation Macros */
+/* used when we prefer performance */
+#define CPUGO_LOW  CLEAR(PORTD,7)
+#define CPUGO_HIGH SET(PORTD,7)
+
+#define CPUIRQ_LOW  CLEAR(PORTD,6)
+#define CPUIRQ_HIGH SET(PORTD,6)
+
+#define SC_LOW  CLEAR(PORTC,3)
+#define SC_HIGH SET(PORTC,3)
+
+#define AOE_LOW  CLEAR(PORTC,2)
+#define AOE_HIGH SET(PORTC,2)
+
+#define LD_LOW  CLEAR(PORTC,0)
+#define LD_HIGH SET(PORTC,0)
+
+#define RW_LOW  CLEAR(PORTC,1)
+#define RW_HIGH SET(PORTC,1)
+
 /* Next is the string in CAT's internal memory containing the edit line, */
 /* intialized in startup.                              */
 volatile char editLine[38];
@@ -94,15 +120,15 @@ PS2Keyboard keyboard;
 void setup() {
   /* Write default value to pins BEFORE setting their mode! */
   /* Writing default values to some of the output pins */
-  digitalWrite(RW, HIGH);
+  RW_HIGH;
   digitalWrite(SO, LOW);
-  digitalWrite(AOE, LOW);
-  digitalWrite(LD, LOW);
-  digitalWrite(SC, LOW);
+  AOE_LOW;
+  LD_LOW;
+  SC_LOW;
   digitalWrite(CPUSPD, LOW);
   digitalWrite(CPUSLC, LOW);
   digitalWrite(CPUIRQ, LOW);
-  digitalWrite(CPUGO, LOW);
+  CPUGO_LOW;
   digitalWrite(CPURST, LOW);
   /* First, declaring all the pins */
   pinMode(SO, OUTPUT);
@@ -234,7 +260,7 @@ void loop() {
 
         default:
           if( ascii != 0 ) {
-            digitalWrite(CPUGO, LOW);   /* Pause the CPU and tristate its buses to high-Z */
+            CPUGO_LOW;   /* Pause the CPU and tristate its buses to high-Z */
 
             cpoke(0x0201, ascii);       /* Put token code of pressed key in the CPU's mailbox, at 0x0201 */
 
@@ -248,7 +274,7 @@ void loop() {
               cpoke(0x0200, 0x01);     /* Flag that there is new mail for the CPU waiting at the mailbox */
             }
 
-            digitalWrite(CPUGO, HIGH);  /* Let the CPU go */
+            CPUGO_HIGH;  /* Let the CPU go */
             digitalWrite(CPUIRQ, HIGH); /* Trigger an interrupt */
             digitalWrite(CPUIRQ, LOW);
 
@@ -343,7 +369,7 @@ void loop() {
     //     cprintEditLine();       /* Print the updated edit line */
     //   } else {                      
     //     /* If a CPU is running */
-    //     digitalWrite(CPUGO, LOW);   /* Pause the CPU and tristate its buses to high-Z */
+    //     CPUGO_LOW;   /* Pause the CPU and tristate its buses to high-Z */
     //     byte mode = cpeek(0x0200);
     //     cpoke(0x0201, ascii);       /* Put token code of pressed key in the CPU's mailbox, at 0x0201 */
     //     if( mode != 0xFE ) {
@@ -354,7 +380,7 @@ void loop() {
 
     //        cpoke(0x0200, 0x01);     /* Flag that there is new mail for the CPU waiting at the mailbox */
     //     }
-    //     digitalWrite(CPUGO, HIGH);  /* Let the CPU go */
+    //     CPUGO_HIGH;  /* Let the CPU go */
     //     digitalWrite(CPUIRQ, HIGH); /* Trigger an interrupt */
     //     digitalWrite(CPUIRQ, LOW);
     //     if( mode == 0xFE ) {
@@ -609,7 +635,7 @@ void runCode() {
   }
   cpurunning = true;
   digitalWrite(CPURST, HIGH); /* Reset the CPU */
-  digitalWrite(CPUGO, HIGH);  /* Enable CPU buses and clock */
+  CPUGO_HIGH;  /* Enable CPU buses and clock */
   delay(50);
   digitalWrite(CPURST, LOW);  /* CPU should now initialize and then go to its reset vector */
 }
@@ -618,7 +644,7 @@ void stopCode() {
     cpurunning = false;         /* Reset this flag */
     Timer1.detachInterrupt();
     digitalWrite(CPURST, HIGH); /* Reset the CPU to bring its output signals back to original states */ 
-    digitalWrite(CPUGO, LOW);   /* Tristate its buses to high-Z */
+    CPUGO_LOW;   /* Tristate its buses to high-Z */
     delay(50);                   /* Give it some time */
     digitalWrite(CPURST, LOW);  /* Finish reset cycle */
 
@@ -646,7 +672,7 @@ void enterGameMode() {
       uint8_t s = keyboard.readScanCode();
       if( !s ) continue;
 
-      digitalWrite(CPUGO, LOW);   /* Pause the CPU and tristate its buses to high-Z */
+      CPUGO_LOW;   /* Pause the CPU and tristate its buses to high-Z */
       byte currWrite = cpeek(0xFE10);
       byte nextWrite = (currWrite+1)&0x0F;
       byte readIndex  = cpeek(0xFE11)&0x0F;
@@ -660,7 +686,7 @@ void enterGameMode() {
       if( mode != 0xFE ) {
         gameMode = false;
       }
-      digitalWrite(CPUGO, HIGH);
+      CPUGO_HIGH;
           
       if( s == 0x76 ) {
         stopCode();
@@ -949,17 +975,17 @@ unsigned int addressTranslate (unsigned int virtualAddress) {
 void resetCPUs() {            /* Self-explanatory */
   digitalWrite(CPURST, LOW);
   digitalWrite(CPUSLC, LOW);  /* First reset the 6502 */
-  digitalWrite(CPUGO, HIGH);
+  CPUGO_HIGH;
   delay(50);
   digitalWrite(CPURST, HIGH);
-  digitalWrite(CPUGO, LOW);
+  CPUGO_LOW;
   delay(50);
   digitalWrite(CPURST, LOW);
   digitalWrite(CPUSLC, HIGH); /* Now reset the Z80 */
-  digitalWrite(CPUGO, HIGH);
+  CPUGO_HIGH;
   delay(50);
   digitalWrite(CPURST, HIGH);
-  digitalWrite(CPUGO, LOW);
+  CPUGO_LOW;
   delay(50);
   digitalWrite(CPURST, LOW);
   if (!mode) digitalWrite(CPUSLC, LOW);
@@ -979,21 +1005,21 @@ void setShiftRegister(unsigned int address, byte data) {
 
 void cpoke(unsigned int address, byte data) {
   setShiftRegister(address, data);
-  digitalWrite(AOE, HIGH);      /* Enable address onto bus */
-  digitalWrite(RW, LOW);        /* Begin writing */
-  digitalWrite(RW, HIGH);       /* Finish up*/
-  digitalWrite(AOE, LOW);
+  AOE_HIGH;      /* Enable address onto bus */
+  RW_LOW;        /* Begin writing */
+  RW_HIGH;       /* Finish up*/
+  AOE_LOW;
 }
 
 byte cpeek(unsigned int address) {
   byte data = 0;
   setShiftRegister(address, data);
-  digitalWrite(AOE, HIGH);      /* Enable address onto us */
+  AOE_HIGH;      /* Enable address onto us */
   /* This time we do NOT enable the data outputs of the shift register, as we are reading */
-  digitalWrite(LD, HIGH);       /* Prepare to latch byte from data bus into shift register */
-  digitalWrite(SC, HIGH);       /* Now the clock tics, so the byte is actually latched */
-  digitalWrite(LD, LOW);
-  digitalWrite(AOE, LOW);
+  LD_HIGH;       /* Prepare to latch byte from data bus into shift register */
+  SC_HIGH;       /* Now the clock tics, so the byte is actually latched */
+  LD_LOW;
+  AOE_LOW;
   data = readShiftRegister();
   return data;
 }
