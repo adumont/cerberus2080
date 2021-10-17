@@ -120,11 +120,11 @@ RES_vec:
 	lda #>VRAM
 	sta LINE+1
 
-	lda #CURSOR
-	ldy COL
-	sta (LINE),y 
+	; lda #CURSOR
+	; ldy COL
+	; sta (LINE),y 
 
-	; jsr clear_screen
+	jsr clear_screen
 
 	ldy #0
 	sty COL
@@ -211,6 +211,14 @@ forth_prog:
 ; Print version string
 	.ADDR do_LIT, VERS_STR
 	.ADDR do_COUNT, do_TYPE
+
+	; .ADDR do_LIT, $0030, do_EMIT
+	; .ADDR do_LIT, $0020, do_EMIT
+	; .ADDR do_LIT, $0031, do_EMIT
+	; .ADDR do_LIT, $0032, do_EMIT
+	; .ADDR do_LIT, $0033, do_EMIT
+	; .ADDR do_LIT, $0034, do_EMIT
+	; .ADDR do_LIT, $0035, do_EMIT
 
 ; test LITSTR
 
@@ -2112,7 +2120,7 @@ print_byte:
 	RTS
 
 nibble_value_to_asc:
-	CMP #KBD_RET
+	CMP #$0A
 	BCC @skip
 	ADC #$66
 @skip:
