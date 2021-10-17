@@ -593,18 +593,30 @@ void binMove(String startAddr, String endAddr, String destAddr) {
 void list(String address) {
   /* Lists the contents of memory from the given address, in a compact format */
   byte i, j;                      /* Just counters */
-  unsigned int addr;              /* Memory address */
+  uint8_t b;
+  uint16_t addr;              /* Memory address */
   char tmp[10];
+  char buf_asc[17];
+  buf_asc[16]=0;
 
-  if (address == "") addr = 0;
-  else addr = strtol(address.c_str(), NULL, 16); /* Convert hexadecimal address string to unsigned int */
+  if (address == "") {
+    addr = 0;
+  }
+  else { 
+    addr = strtol(address.c_str(), NULL, 16); /* Convert hexadecimal address string to unsigned int */
+  }
+
   for (i = 2; i < 25; i++) {
-    sprintf(tmp, "0x%0.4X", addr);
-    cprintString(3, i, tmp);
+    sprintf(tmp, "%0.4X", addr);
+    cprintString(2, i, tmp);
     for (j = 0; j < 8; j++) {
-      sprintf(tmp, "%0.2X", cpeek(addr++));
-      cprintString(12+(j*3), i, tmp);
+      b = cpeek(addr++);
+      sprintf(tmp, "%0.2X", b);
+      cprintString(7+(j*3), i, tmp);
+
+      buf_asc[j]=( b<32 || b>126 ) ? '.' : b ;
     }
+    cprintString(31, i, buf_asc);
   }
 }
 
