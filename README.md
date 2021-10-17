@@ -33,7 +33,8 @@ For now I've taken Andy Toone's 0xFE BIOS as code base, and I have made some min
 - Write default values to pins *before* setting their mode (we don't want to output unknown/unexpected value in the board)
 - Libs are included in the sketch folder, under libraries/
 - Enhanced memory dump formatting (all caps, always two digit) with ASCII dump
-- After a list command (dump), you can use page-up/down keys to browse the memory.
+- After a `list` command (dump), you can use page-up/down keys to browse the memory.
+- You can specify the address where to run your code from with  `run ADDR` (default is C000 for 6502, 0202 for z80).
 - Added a couple of build options (see in Makefile):
   - JINGLE_OFF: disable the boot Jingle
   - SOUND_FEEDBACK_OFF: disable the keys feedback sound

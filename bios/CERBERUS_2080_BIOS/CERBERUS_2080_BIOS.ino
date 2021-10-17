@@ -61,6 +61,8 @@
 /* MISO -> pin 18 on CAT */
 /* MOSI -> pin 17 on CAT */
 
+#define DEFAULT_RESET_VECTOR_6502 0xC000
+
 /* Now some stuff required by the libraries in use */
 const int chipSelect = CS;
 const int DataPin = KDAT;
@@ -516,7 +518,8 @@ void enter() {  /* Called when the user presses ENTER, unless a CPU program is b
   /* RUN **********************************************************************************/
   } else if (nextWord == F("run")) {      /* Runs the code in memory */
     for (i = 0; i < 38; i++) previousEditLine[i] = editLine[i]; /* Store edit line just executed */
-    runCode();
+    nextWord = getNextWord(false);
+    runCode(nextWord);
   /* SAVE *********************************************************************************/
   } else if (nextWord == F("save")) {
     nextWord = getNextWord(false);                    /* Get start address */
@@ -564,7 +567,7 @@ void help() {
   cprintString(3, 3,  F("        AVAILABLE COMMANDS:"));
   cprintString(3, 4,  F(" (All numbers must be hexadecimal)"));
   cprintString(3, 6,  F("0xADDR BYTE: Writes BYTE at ADDR"));
-  cprintString(3, 7,  F("list ADDR: Lists memory from ADDR"));
+  cprintString(3, 7,  F("list [ADDR]: Lists memory from ADDR"));
   cprintString(3, 8,  F("cls: Clears the screen"));
   cprintString(3, 9,  F("testmem: Reads/writes to memories"));
   cprintString(3, 10, F("6502: Switches to 6502 CPU mode"));
@@ -577,7 +580,7 @@ void help() {
   cprintString(3, 17, F("load FILE ADDR: Loads FILE at ADDR"));
   cprintString(3, 18, F("save ADDR1 ADDR2 FILE: Saves memory"));
   cprintString(5, 19, F("from ADDR1 to ADDR2 to FILE"));
-  cprintString(3, 20, F("run: Executes code in memory"));
+  cprintString(3, 20, F("run [ADDR]: Executes code from ADDR"));
   cprintString(3, 21, F("move ADDR1 ADDR2 ADDR3: Moves bytes"));
   cprintString(5, 22, F("between ADDR1 & ADDR2 to ADDR3 on"));
   cprintString(3, 23, F("help / ?: Shows this help screen"));
@@ -626,7 +629,7 @@ void list(String address) {
       addr = 0;
     }
   }
-  else { 
+  else {
     addr = strtol(address.c_str(), NULL, 16); /* Convert hexadecimal address string to unsigned int */
   }
 
@@ -647,24 +650,39 @@ void list(String address) {
   }
 }
 
-void runCode() {
+void runCode(String address) {
+  uint16_t addr; // memory to start running from (aka Reset Vector)
+
+  if (address == "") {
+    addr = DEFAULT_RESET_VECTOR_6502;
+  }
+  else {
+    addr = strtol(address.c_str(), NULL, 16); /* Convert hexadecimal address string to unsigned int */
+  }
+
   ccls();
   /* REMEMBER:                           */
   /* Byte at 0x0200 is the new mail flag */
   /* Byte at 0x0201 is the mail box      */
   cpoke(0x0200, 0x00);    /* Reset mail flag */
   cpoke(0x0201, 0x00);    /* Reset mailbox */
-  if (!mode) {            /* We are in 6502 mode */
+
+  /* 6502 mode */
+  if (!mode) {
     /* Non-maskable interrupt vector points to 0xFCB0, just after video area */
     cpoke(0xFFFA, 0xB0);
     cpoke(0xFFFB, 0xFC);
+
     /* The interrupt service routine simply returns */
     // FCB0        RTI             40
     cpoke(0xFCB0, 0x40);
-    /* Set reset vector to 0xC000, the beginning of the code area */
-    cpoke(0xFFFC, 0x00);
-    cpoke(0xFFFD, 0xC0);
-  } else {                /* We are in Z80 mode */
+
+    /* Set reset vector: the beginning of the code area */
+    cpoke(0xFFFC, (addr & 0xFF));
+    cpoke(0xFFFD, ((addr >> 8) & 0xFF));
+  } 
+  /* Z80 mode */
+  else {
     /* The NMI service routine of the Z80 is at 0x0066 */
     /* It simply returns */
     // 0066   ED 45                  RETN 
@@ -836,7 +854,14 @@ void load(String filename, String address, bool silent) {
   unsigned int addr;                            /* Address where to load the file into memory */
   if (filename == "") { if (!silent) cprintStatus(STATUS_MISSING_OPERAND); } /* Missing file name, so stop */
   else {
-    if (address == "") addr = 0x0202;           /* If not otherwise specified, load file into start of code area */
+    /* If not otherwise specified, load file into start of code area */
+    if (address == "") {
+      if(!mode){ // 6502
+        addr = DEFAULT_RESET_VECTOR_6502;
+      } else { // Z80
+        addr = 0x0202;
+      }
+    }
     else addr = strtol(address.c_str(), NULL, 16); /* Convert address string to hexadecimal number */
     if (!SD.exists(filename)) { if (!silent) cprintStatus(STATUS_NO_FILE); } /* The file does not exist, so stop with error */
     else {
