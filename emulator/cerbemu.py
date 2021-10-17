@@ -27,6 +27,27 @@ code = locale.getpreferredencoding()
 
 exit_event = threading.Event()
 
+addr_W    = 0x00FE
+addr_IP	  = addr_W -2
+addr_G2	  = addr_IP-2
+addr_G1	  = addr_G2-2
+addr_LINE = addr_G1-2
+addr_ROW  = addr_LINE - 1
+addr_COL  = addr_ROW - 1
+addr_DTOP = addr_COL-2
+
+addr_MAILFLAG   = 0x0200
+addr_MAILBOX    = addr_MAILFLAG +1
+addr_LATEST 	= addr_MAILBOX  +1
+addr_MODE       = addr_LATEST +2
+addr_BOOT       = addr_MODE +1
+addr_BOOTP      = addr_BOOT +1
+addr_ERROR      = addr_BOOTP +2
+addr_INP_LEN    = addr_ERROR + 1
+addr_INPUT      = addr_INP_LEN +1
+addr_INP_IDX    = addr_INPUT + 128
+addr_DP         = addr_INP_IDX +1
+
 def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
 
     started=False
@@ -62,17 +83,28 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
 
 
     def disass_pane(mode, instr):
+            # if mode == 0:
+            #     return
+
         dbgwin.addstr(0,0, "PC: %04X Cycles: %d" % ( mpu.pc, mpu.processorCycles ) )
 
         dbgwin.addstr(2,0, "A:%02X  X:%02X  Y:%02X  S:%02X  P:%s" % ( mpu.a, mpu.x, mpu.y, mpu.sp, ( itoa(mpu.p, 2).rjust(8, '0') ) ) )
 
-        dbgwin.addstr(4,0, "LINE: %04X ROW: %02X COL: %02X " % ( getWord(0x00FE), getByte(0x00FE-1), getByte(0x00FE-2) ) )
+        dbgwin.addstr(4,0, "LINE: %04X ROW: %02X COL: %02X " % ( getWord(addr_LINE), getByte(addr_ROW), getByte(addr_COL) ) )
+
+        _w=getWord(addr_W)
+        _ip=getWord(addr_IP)
+        dbgwin.addstr(6,0, " W: %04X  IP: %04X" % ( _w, _ip ) )
+
+        dbgwin.addstr(7,0, "G1: %04X  G2: %04X" % ( getWord(addr_G1), getWord(addr_G2) ) )
+
+        dbgwin.addstr(8,0, "LATEST: %04X  DP: %04X" % ( getWord(addr_LATEST), getWord(addr_DP) ) )
 
         if mode == 1:
             instr.append( render_instr( [ "%04X" % mpu.pc, "%02X" % getByte(mpu.pc), "%02X" % getByte(mpu.pc+1), "%02X" % getByte(mpu.pc+2) ] ) )
             instr = instr[-hist_depth:] # keep last "hist_depth"
             for i in range(len(instr)):
-                dbgwin.addstr(10+i,0, instr[i] )
+                dbgwin.addstr(11+i,0, instr[i] )
         
         dbgwin.noutrefresh()
 
@@ -121,7 +153,7 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
 
     started=True
 
-    delay=0.0001
+    delay=0
     # delay=1
 
     dbgwin.addstr(1,26, "NV-BDIZC" )
@@ -140,7 +172,7 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
             if mode_step == 0:  # back to continuous mode: we clear the disass part
                 instr = hist_depth*[38*" "]
                 for i in range(len(instr)):
-                    dbgwin.addstr(10+i,0, instr[i] )                
+                    dbgwin.addstr(11+i,0, instr[i] )                
             
             run_next_step = 1
 
