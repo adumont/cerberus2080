@@ -32,7 +32,8 @@ For now I've taken Andy Toone's 0xFE BIOS as code base, and I have made some min
 - Boots in 6502 fast mode by default
 - Write default values to pins *before* setting their mode (we don't want to output unknown/unexpected value in the board)
 - Libs are included in the sketch folder, under libraries/
-- Enhanced memory dump formatting (using 0x%0.4X and %0.2X)
+- Enhanced memory dump formatting (all caps, always two digit) with ASCII dump
+- After a list command (dump), you can use page-up/down keys to browse the memory.
 - Added a couple of build options (see in Makefile):
   - JINGLE_OFF: disable the boot Jingle
   - SOUND_FEEDBACK_OFF: disable the keys feedback sound

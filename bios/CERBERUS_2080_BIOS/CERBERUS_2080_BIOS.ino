@@ -117,6 +117,9 @@ volatile bool cpurunning = false;   /* true = CPU is running, CAT should not use
 volatile bool gameMode = false;   /* true = CPU is running, CAT should not use the buses */
 volatile bool fast = true;         /* true = 8 MHz CPU clock, false = 4 MHz CPU clock */
 
+volatile bool last_cmd_list = false;         /* true = 8 MHz CPU clock, false = 4 MHz CPU clock */
+uint16_t  last_list_addr = 0;
+
 void(* resetFunc) (void) = 0;       /* Software reset fuction at address 0 */
 
 PS2Keyboard keyboard;
@@ -295,6 +298,7 @@ void loop() {
       switch(ascii) {
 
         case PS2_ENTER:
+          last_cmd_list = false;  // reset flag to false
           enter();
           break;
 
@@ -312,6 +316,22 @@ void loop() {
         case PS2_DOWNARROW:
           /* On down arrow, reset edit line contents */
           clearEditLine();
+          break;
+
+        case PS2_PAGEDOWN:
+          /* On Page Down, if last command was list, we list next page */
+          if(last_cmd_list) {
+            last_list_addr += 0xB8;
+            list("");
+          }
+          break;
+
+        case PS2_PAGEUP:
+          /* On Page Up, if last command was list, we list previous page */
+          if(last_cmd_list) {
+            last_list_addr -= 0xB8;
+            list("");
+          }
           break;
 
         case PS2_DELETE:
@@ -596,15 +616,22 @@ void list(String address) {
   uint8_t b;
   uint16_t addr;              /* Memory address */
   char tmp[10];
-  char buf_asc[17];
-  buf_asc[16]=0;
+  char buf_asc[9];
+  buf_asc[8]=0;
 
   if (address == "") {
-    addr = 0;
+    if(last_cmd_list){
+      addr=last_list_addr;
+    } else {
+      addr = 0;
+    }
   }
   else { 
     addr = strtol(address.c_str(), NULL, 16); /* Convert hexadecimal address string to unsigned int */
   }
+
+  last_cmd_list = true;
+  last_list_addr = addr;
 
   for (i = 2; i < 25; i++) {
     sprintf(tmp, "%0.4X", addr);
