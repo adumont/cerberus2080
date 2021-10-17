@@ -232,9 +232,9 @@ void loop() {
     if( keyboard.available() ) {
       ascii = keyboard.read();        /* Read key pressed */
 
-      char tmp[15];
-      sprintf(tmp, "KEY: %0.2X (%c)\r\n", ascii, ascii);
-      Serial.print(tmp);
+      // char tmp[15];
+      // sprintf(tmp, "KEY: %0.2X (%c)\r\n", ascii, ascii);
+      // Serial.print(tmp);
 
       #ifndef SOUND_FEEDBACK_OFF
       tone(SOUND, 750, 5);            /* Clicking sound for auditive feedback to key presses */
@@ -271,9 +271,9 @@ void loop() {
             byte requested_mode = cpeek(0x0200);  // we read the if any mode requested by the CPU
 
             if( requested_mode != 0xFE ) {
-              char tmp[15];
-              sprintf(tmp, "MAIL> %0.2X (%c)\r\n", ascii, ascii);
-              Serial.print(tmp);
+              // char tmp[15];
+              // sprintf(tmp, "MAIL> %0.2X (%c)\r\n", ascii, ascii);
+              // Serial.print(tmp);
 
               cpoke(0x0200, 0x01);     /* Flag that there is new mail for the CPU waiting at the mailbox */
             }
