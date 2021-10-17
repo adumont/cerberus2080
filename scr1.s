@@ -283,12 +283,3 @@ IRQ_vec:
 NMI_vec:
 	RTI
 
-; system vectors
-.ifdef EMULATOR
-;    *=  $FFFA
-.segment  "VECTORS"	
-
-    .addr   NMI_vec     ; NMI vector
-    .addr   RES_vec     ; RESET vector
-    .addr   IRQ_vec     ; IRQ vector
-.endif
