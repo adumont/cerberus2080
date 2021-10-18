@@ -1736,6 +1736,7 @@ p_LATEST = .ident(.sprintf("__word_%u", __word_last))
 ; BEGIN CERBERUS IO SCREEN ROUTINES
 
 getc:
+	jsr put_cursor
 @wait_key:
   ; wai       ; I can't make it work in py65... :(
   lda MAILFLAG
