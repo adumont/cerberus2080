@@ -1804,6 +1804,9 @@ putc:
 @backspace:
 	jsr erase_cursor
 	; dey only if not 0
+
+	ldy COL
+
 	cpy #0
 	bne @goleft1col
 	; we are at the beginning of a line:
