@@ -65,6 +65,7 @@ ROW = LINE - 1
 COL = ROW - 1
 
 VRAM = $F800
+BP   = $F000 - 1	; top of LOCALS stack (grows down). Right below the character memory
 
 MAX_ROW = 30
 MAX_COL = 40
@@ -2265,7 +2266,9 @@ BOOT_PRG:
 ; 	Local variable storage grows downwards from 3FFF
 ; 	No safety checks are done to avoid running over the dictionary!
 
-	.BYTE " VARIABLE BP 3FFE BP !"
+	.BYTE " VARIABLE BP "		; defines BP variable (Base Pointer)
+	.BYTE .sprintf("%X", BP)	; put the address on the stack
+	.BYTE " BP !"				; store in BP
 	.BYTE " : LOCALS  BP @ DUP ROT 2* - DUP -ROT ! BP ! ;"
 	.BYTE " : -LOCALS BP DUP @ @ SWAP ! ;"
 
