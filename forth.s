@@ -65,7 +65,7 @@ ROW = LINE - 1
 COL = ROW - 1
 
 VRAM = $F800
-BP   = $F000 - 1	; top of LOCALS stack (grows down). Right below the character memory
+BP   = $F000 - 2	; top of LOCALS stack (grows down). Right below the character memory
 
 MAX_ROW = 30
 MAX_COL = 40
