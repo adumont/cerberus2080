@@ -1,6 +1,6 @@
 ifdef EMULATOR
   CFG:=emulator.cfg
-  OPT= --asm-define EMULATOR
+  OPT:= --asm-define EMULATOR
 else
   CFG:=cerberus.cfg
 endif
