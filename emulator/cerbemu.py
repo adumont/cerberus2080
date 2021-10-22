@@ -46,7 +46,8 @@ addr_ERROR      = addr_BOOTP +2
 addr_INP_LEN    = addr_ERROR + 1
 addr_INPUT      = addr_INP_LEN +1
 addr_INP_IDX    = addr_INPUT + 128
-addr_DP         = addr_INP_IDX +1
+addr_OK         = addr_INP_IDX + 1
+addr_DP         = addr_OK +1
 
 def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
 
