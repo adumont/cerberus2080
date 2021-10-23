@@ -121,10 +121,6 @@ RES_vec:
 	lda #>VRAM
 	sta LINE+1
 
-	; lda #CURSOR
-	; ldy COL
-	; sta (LINE),y 
-
 	jsr clear_screen
 
 	ldy #0
@@ -463,6 +459,20 @@ defword "DROP",,
 ; to force a BREAK
 defword "BREAK",,
 	JMP NEXT	; set Breakpoint here!
+
+; Clear Screen (and bring cursor back HOME)
+defword "CLSCR",,
+	stz ROW
+	stz COL
+
+	; store addr of line 0
+	lda #<VRAM
+	sta LINE
+	lda #>VRAM
+	sta LINE+1
+
+	jsr clear_screen
+	JMP NEXT
 
 defword "PUSH0","0",
 	STZ 0,x
