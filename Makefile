@@ -21,7 +21,7 @@ LIB=lib
 
 %.bin: %.s #$(LIB)/interrupt.s $(LIB)/vectors.s $(LIB)/copydata.s
 	$(CL65) $(CLFLAGS) $(OPT) -Ln $*.lbl -o $@ $^
-	@echo Flash with: ../programmer/eeprom.py flash $@
+	#@echo Flash with: ../programmer/eeprom.py flash $@
 
 %.h: %.bin
 	#cp $< /tmp/rom.bin
