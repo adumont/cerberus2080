@@ -19,6 +19,7 @@ from py65.memory import ObservableMemory
 parser = argparse.ArgumentParser()
 parser.add_argument('-r','--rom', help='binary rom file', default="forth.bin")
 parser.add_argument('-a','--addr', help='address to load to', default=0xC000)
+parser.add_argument('-l','--logfile', help='filename of log', default=None)
 args = parser.parse_args()
 
 
@@ -49,7 +50,7 @@ addr_INP_IDX    = addr_INPUT + 128
 addr_OK         = addr_INP_IDX + 1
 addr_DP         = addr_OK +1
 
-def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
+def cpuThreadFunction(ch,win,dbgwin, queue, queue_step, logfile):
 
     started=False
 
@@ -84,29 +85,53 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
 
 
     def disass_pane(mode, instr):
-            # if mode == 0:
-            #     return
+        log_pc = "PC: %04X Cycles: %d" % ( mpu.pc, mpu.processorCycles )
+        dbgwin.addstr(0,0, log_pc )
 
-        dbgwin.addstr(0,0, "PC: %04X Cycles: %d" % ( mpu.pc, mpu.processorCycles ) )
-
-        dbgwin.addstr(2,0, "A:%02X  X:%02X  Y:%02X  S:%02X  P:%s" % ( mpu.a, mpu.x, mpu.y, mpu.sp, ( itoa(mpu.p, 2).rjust(8, '0') ) ) )
+        log_registers = "A:%02X  X:%02X  Y:%02X  S:%02X  P:%s" % ( mpu.a, mpu.x, mpu.y, mpu.sp, ( itoa(mpu.p, 2).rjust(8, '0') ) )
+        dbgwin.addstr(2,0, log_registers )
 
         dbgwin.addstr(4,0, "LINE: %04X ROW: %02X COL: %02X " % ( getWord(addr_LINE), getByte(addr_ROW), getByte(addr_COL) ) )
 
         _w=getWord(addr_W)
         _ip=getWord(addr_IP)
-        dbgwin.addstr(6,0, " W: %04X  IP: %04X" % ( _w, _ip ) )
+        log_forth_reg1 = " W: %04X  IP: %04X" % ( _w, _ip )
+        dbgwin.addstr(6,4, log_forth_reg1 )
 
-        dbgwin.addstr(7,0, "G1: %04X  G2: %04X" % ( getWord(addr_G1), getWord(addr_G2) ) )
+        log_forth_reg2 = "G1: %04X  G2: %04X" % ( getWord(addr_G1), getWord(addr_G2) )
+        dbgwin.addstr(7,4, log_forth_reg2 )
 
         dbgwin.addstr(8,0, "LATEST: %04X  DP: %04X" % ( getWord(addr_LATEST), getWord(addr_DP) ) )
 
+        curr_instr = render_instr( [ "%04X" % mpu.pc, "%02X" % getByte(mpu.pc), "%02X" % getByte(mpu.pc+1), "%02X" % getByte(mpu.pc+2) ] )
+
+        if logfile:
+            logfile.write(" | ".join([log_registers, log_forth_reg1, curr_instr]) + "\n")
+
         if mode == 1:
-            instr.append( render_instr( [ "%04X" % mpu.pc, "%02X" % getByte(mpu.pc), "%02X" % getByte(mpu.pc+1), "%02X" % getByte(mpu.pc+2) ] ) )
+            instr.append( curr_instr )
             instr = instr[-hist_depth:] # keep last "hist_depth"
             for i in range(len(instr)):
                 dbgwin.addstr(11+i,0, instr[i] )
-        
+
+            # Show Data Stack
+            for i in range(5):
+                a = mpu.x + 2*i
+                v = getWord(a)
+                if a<=addr_DTOP:
+                    dbgwin.addstr(28-i, 0, "%d %04X: %04X" % (i, a, v) )
+                else:
+                    dbgwin.addstr(28-i, 0, "             " )
+
+            # Show 6502 Stack
+            for i in range(5):
+                a = 0x100 + mpu.sp + i + 1
+                v = getByte(a)
+                if a<=0x1FF:
+                    dbgwin.addstr(28-i, 20, "%02X: %02X" % (a & 0xFF, v) )
+                else:
+                    dbgwin.addstr(28-i, 20, "       " )
+
         dbgwin.noutrefresh()
 
 
@@ -168,12 +193,17 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step):
     run_next_step = 0
 
     while not exit_event.is_set():
+        if mpu.pc == 0xC706 : # breakpoint
+            queue_step.put(1)
+
         if not queue_step.empty():
             mode_step = queue_step.get()
             if mode_step == 0:  # back to continuous mode: we clear the disass part
-                instr = hist_depth*[38*" "]
+                instr = hist_depth*[38*" "] # blank line! we erase!
                 for i in range(len(instr)):
-                    dbgwin.addstr(11+i,0, instr[i] )                
+                    dbgwin.addstr(11+i,0, instr[i] )
+                for i in range(5):
+                    dbgwin.addstr(28-i,0, instr[i] )
             
             run_next_step = 1
 
@@ -241,8 +271,13 @@ def main(stdscr):
     queue = Queue()
     queue_step = Queue()
 
+    if args.logfile:
+        logfile = open(args.logfile, "w")  # a=append mode
+    else:
+        logfile=None
+
     # create computer thread
-    t=threading.Thread( target=cpuThreadFunction, args=("", cpuwin, dbgwin, queue, queue_step) )
+    t=threading.Thread( target=cpuThreadFunction, args=("", cpuwin, dbgwin, queue, queue_step, logfile) )
     t.start()
 
     # main thread for getting keypress
