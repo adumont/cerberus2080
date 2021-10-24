@@ -1284,7 +1284,9 @@ defword "STAR_HEADER","*HEADER",
 defword "PRMP",,
 	; Print the OK Prompt
 	JMP do_COLON
+	.ADDR do_LIT, MODE, do_CFETCH, do_0BR, @skip
 	.ADDR do_LIT, OK_STR, do_COUNT, do_TYPE
+@skip:
 	.ADDR do_SEMI
 
 defword "MARKER",,
@@ -2233,8 +2235,7 @@ OK_STR: CString {"ok "}
 ; Must end with $00. That will exit BOOTstrap mode and
 ; enter the interpreter
 BOOT_PRG:
-	; .BYTE " S( READY) TYPE CRLF"
-
+	; .BYTE " PRMP" ; Shows ok prompt to user
 	; .BYTE " ", $00
 
 	.BYTE " : ? @ . ; "
