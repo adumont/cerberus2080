@@ -94,9 +94,18 @@ EMULATOR=1 make scr1.bin
 emulator/cerbemu.py -r scr1.bin
 ```
 
-At this early stage it looks like this:
+In the early stage it looked like this:
 
 ![](asset/Emulator.gif)
+
+Now it has evolved like this, showing more debug information:
+- 6502 registers and stack
+- FORTH registers and stack
+- last lines of dissassembled 6502 code
+
+![](asset/Emulator.png)
+
+TODO: add symbols from forth.lbl (labels and words)
 
 ## Emulator execution modes
 
@@ -110,20 +119,22 @@ The Emulator will show the next instruction to be run (available in `Step by ste
 
 # Kernel
 
-At this early stage, I'm working on getting the input of the user (key pressed) rendered on the screen in a terminalish user-friendly way:
+In the early stage of this project, I worked on getting the input of the user (key pressed) rendered on the screen in a terminalish user-friendly way:
 - handling line overflows
 - scrolling up when reaching last line
 - handling backspace and return
 - display a cursor (static '_', not flashing at the moment)
 
-That's mainly why I made the [Emulator](#emulator).
+That's mainly why I made the [Emulator](#emulator). This is what is in the file `minikernel.s`.
+
+I then worked on merging my FORTH within this kernel. The result is `forth.s` (the FORTH kernel).
 
 ## Build the kernel for Cerberus
 
 ```
 make clean
-EMULATOR=1 make scr1.bin
-emulator/cerbemu.py -r scr1.bin
+EMULATOR=1 make forth.bin
+emulator/cerbemu.py -r forth.bin
 ```
 
 ## Disassemble the kernel binary
@@ -131,7 +142,7 @@ emulator/cerbemu.py -r scr1.bin
 Useful to check that everything is where/how it should be:
 
 ```
-da65 --cpu 65c02 --comments 3 --start-addr $(( 0xC000)) scr1.bin | less
+da65 --cpu 65c02 --comments 3 --start-addr $(( 0xC000)) forth.bin | less
 ```
 
 ## cl65 linker config files
