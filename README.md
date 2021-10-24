@@ -76,22 +76,22 @@ minicom -b 9600
 
 # Emulator
 
-I've built a somewhat precarious emulator to develop a minimal [Kernel](#kernel). It's based on Py65 for the 6502 emulation, and Curses for the screen rendering.
+I've built an emulator to develop a minimal [Kernel](#kernel). It's based on Py65 for the 6502 emulation, and Curses for the screen rendering.
 
-On one hand, the emulator writes any key pressed to RAM using the MAILBOX/MAILFLAG mechanism.
+On one hand, the emulator writes any key pressed to RAM using the MAILBOX/MAILFLAG mechanism, just like CAT in the Cerberus2080.
 
-On the other hand, the emulator intercepts writes to the Display RAM ($F800-$FCAF) and renders the written char on the emulated screen (left pane).
+On the other hand, the emulator intercepts writes to the Display RAM ($F800-$FCAF) and renders the written char on the emulated screen (left pane). Cerberus Character memory isn't emulated.
 
 The right pane shows PC, Clock cycles, the 6502 Registers, some variables watches. In step by step mode, the next disassembled instruction will be shown as well.
 
 ## Build the kernel for the emulator
 
-In order to build the kernel for the emulator we have to specify `EMULATOR=1`:
+In order to build the FORTH kernel for the emulator we have to specify `EMULATOR=1`:
 
 ```
 make clean
-EMULATOR=1 make scr1.bin
-emulator/cerbemu.py -r scr1.bin
+EMULATOR=1 make forth.bin
+emulator/cerbemu.py -r forth.bin
 ```
 
 In the early stage it looked like this:
