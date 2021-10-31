@@ -2234,6 +2234,13 @@ OK_STR: CString {"ok "}
 ; At this point we can extend our forth in forth
 ; Must end with $00. That will exit BOOTstrap mode and
 ; enter the interpreter
+
+; /!\ I'm having some werd issues in Cerberus with FORTH hanging
+; after showing the version string.
+; Adding some space (NOPs) here seems to make it work... 
+; Alignemnt issues??? to be investigated...
+	NOP
+
 BOOT_PRG:
 	; .BYTE " PRMP" ; Shows ok prompt to user
 	; .BYTE " ", $00
