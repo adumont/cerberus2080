@@ -33,6 +33,8 @@ def cmd_send(args):
 
   addr = int(args.addr, 16)
 
+  addr_start = addr
+
   batch = 10
 
   with open(args.file, "rb") as f:
@@ -59,7 +61,7 @@ def cmd_send(args):
       print("#%04X" % chks, end="")
       ser.write( str.encode( "#%04X\r" % chks ) )
 
-      sleep(0.05)
+      sleep(0.02)
 
       b="".join([chr(i) for i in get_response(show=False) ])
       b=b.strip()
@@ -82,7 +84,7 @@ def cmd_send(args):
 
       if count >= l: break
 
-  print()
+  print("%d bytes written from %04X to %04X" % (addr-addr_start, addr_start, addr-1) )
 
 
 def cmd_run(args):
