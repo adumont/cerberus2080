@@ -61,7 +61,7 @@ def cmd_send(args):
       print("#%04X" % chks, end="")
       ser.write( str.encode( "#%04X\r" % chks ) )
 
-      sleep(0.02)
+      sleep(0.05)
 
       b="".join([chr(i) for i in get_response(show=False) ])
       b=b.strip()
