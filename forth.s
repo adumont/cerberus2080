@@ -1264,7 +1264,8 @@ defword "RBRAC","]",
 	STZ MODE
 	JMP NEXT
 
-defword "STAR_HEADER","*HEADER",
+; defword "STAR_HEADER","*HEADER",
+do_STAR_HEADER:		; don't place it in the Dictionary
 	JMP do_COLON
 	.ADDR do_HERE		; keep current HERE on stack
 	.ADDR do_LATEST, do_FETCH, do_COMMA ; store value of LATEST in the Link of new Header
@@ -1275,10 +1276,6 @@ defword "STAR_HEADER","*HEADER",
 	.ADDR do_HERE, do_SWAP, do_CMOVE ; store name
 	.ADDR do_ALLOT		; advance HERE by LEN
 
-	.ADDR do_CLIT	;
-	.BYTE $4C		; store a 4C (JMP)
-	.ADDR do_CCOMMA	;
-
 	.ADDR do_SEMI
 
 defword "PRMP",,
@@ -1288,6 +1285,15 @@ defword "PRMP",,
 	.ADDR do_LIT, OK_STR, do_COUNT, do_TYPE
 @skip:
 	.ADDR do_SEMI
+
+do_STAR_COMMIT_JMP:
+; store a 4C (JMP) into the word
+	JMP do_COLON
+	.ADDR do_CLIT	;
+	.BYTE $4C		; store a 4C (JMP)
+	.ADDR do_CCOMMA	;
+	.ADDR do_SEMI
+
 
 defword "MARKER",,
 ; When called, MARKER creates a new word on the dictionary called FORGET
@@ -1302,7 +1308,7 @@ defword "MARKER",,
 	CString "FORGET"	; commits counted string
 	.ADDR do_COUNT
 
-	.ADDR do_STAR_HEADER
+	.ADDR do_STAR_HEADER, do_STAR_COMMIT_JMP
 
 	.ADDR do_LIT, do_COLON, do_COMMA	; do_COLON
 
@@ -1322,21 +1328,37 @@ defword "MARKER",,
 
 	.ADDR do_SEMI
 
-defword "CREATE",":",
+defword "NEXT",,
+; commit a JMP NEXT to close the primitive word
+	JMP do_COLON
+	.ADDR do_STAR_COMMIT_JMP
+	.ADDR do_LIT, NEXT, do_COMMA
+	.ADDR do_SEMI
+
+defword "CREATE",,
+; get next TOKEN in INPUT (with WORD) and creates a Header
+; but doesn't fill the Code Field (can be used for primitive word, or secondary if we will it with do_COLON (see FCOLON))
+	JMP do_COLON
+	.ADDR do_WORD		; get next TOKEN in INPUT (new word's name)
+	.ADDR do_STAR_HEADER
+	.ADDR do_SEMI
+
+defword "FCOLON",":",	; Forth Colon ":"
 ; get next TOKEN in INPUT and creates 
 ; a Header for a new word
 	JMP do_COLON
-	.ADDR do_WORD		; get next TOKEN in INPUT (new word's name)
-	.ADDR  do_STAR_HEADER
-	.ADDR  do_LIT, do_COLON, do_COMMA	; store do_COLON's addr
-	.ADDR  do_RBRAC ; Enter Compilation mode
+	.ADDR do_CREATE		; creates header
+	.ADDR do_STAR_COMMIT_JMP	; adds JMP
+	.ADDR do_LIT, do_COLON, do_COMMA	; store do_COLON addr
+	;.ADDR do_STAR_LIT_COMMA, do_COLON
+	.ADDR do_RBRAC ; Enter Compilation mode
 	.ADDR do_SEMI
 
 defword "VARIABLE",,
 ; get next TOKEN in INPUT and creates
 ; a Header for a new word
 	JMP do_COLON
-	.ADDR do_CREATE	; creates new header
+	.ADDR do_FCOLON	; creates a Forth colon word's header
 	.ADDR do_LIT, do_LIT, do_COMMA
 	.ADDR do_HERE		; put HERE on the stack
 	.ADDR do_PUSH0, do_COMMA	; store 00 as
