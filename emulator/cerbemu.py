@@ -125,6 +125,8 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step, logfile):
         dbgwin.addstr(8,0, "LATEST: %04X  DP: %04X" % ( getWord(addr_LATEST), _here ) )
 
         curr_instr = render_instr( [ "%04X" % mpu.pc, "%02X" % getByte(mpu.pc), "%02X" % getByte(mpu.pc+1), "%02X" % getByte(mpu.pc+2) ] )
+        if symbols:
+            curr_instr += getSymbol(mpu.pc)
 
         if logfile:
             logfile.write(" | ".join([log_registers, log_forth_reg1, curr_instr]) + "\n")
@@ -147,18 +149,7 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step, logfile):
             instr.append( curr_instr )
             instr = instr[-hist_depth:] # keep last "hist_depth"
             for i in range(len(instr)):
-                dbgwin.addstr(12+i,0, instr[i] )
-
-            # Show latest symbols
-            if symbols:
-                curr_symbol = getSymbol(mpu.pc)
-                if curr_symbol != syms[-1]:
-                    syms.append( curr_symbol )
-                    # syms.append( "%04X: %s" % (mpu.pc, curr_symbol) )
-                syms = syms[-symbol_depth:] # keep last "symbol_depth"
-                line_symbols=", ".join([ s for s in syms if s != "" ]) + 40*" "
-                line_symbols=line_symbols[0:40]
-                dbgwin.addstr(20,0, line_symbols )
+                dbgwin.addstr(12+i,0, (instr[i]+10*" ")[0:40] )
 
             # Show some bytes before HERE
             for j in [1,0]:

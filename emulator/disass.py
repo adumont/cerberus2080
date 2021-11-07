@@ -327,4 +327,4 @@ def render_instr(_args):
         operand = "A"
     
     # return ("%04X: %-10s %s %-8s %-4s %s " % (addr, hexdump.upper(), o, operand, m, comment))
-    return ("%04X: %-10s %s %-8s " % (addr, hexdump.upper(), o, operand))
+    return ("%04X: %s %-8s " % (addr, o, operand))
