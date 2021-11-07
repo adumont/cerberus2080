@@ -53,13 +53,38 @@ addr_INP_IDX    = addr_INPUT + 128
 addr_OK         = addr_INP_IDX + 1
 addr_DP         = addr_OK +1
 
+symbols = None
+
+def parseSymbolsFile(filename):
+    # file content should look like this:
+    # al 00C23D .do_PUSH1
+    # al 00C239 .__word_12
+    # al 00C239 .h_PUSH1
+    # al 00C22E .__word_11
+    symbols = {}
+    with open(filename) as file:
+        for line in file:
+            _, a, s = line.split(" ")
+            if s.startswith(".__word_") or s.startswith(".h_"):
+                # we discard those symbols
+                continue
+            symbols[int(a,16)]=s.strip()[1:]
+    return symbols
+
+def getSymbol(addr):
+    return symbols[max(k for k in symbols if k <= addr)]
+
 def cpuThreadFunction(ch,win,dbgwin, queue, queue_step, logfile):
+    global symbols
 
     started=False
 
     hist_depth = 8
 
     instr = hist_depth*[""]
+
+    symbol_depth=3
+    syms = symbol_depth*[""]
 
     def load(memory, start_address, bytes):
         memory[start_address:start_address + len(bytes)] = bytes
@@ -87,7 +112,7 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step, logfile):
         return mpu.memory[address] + 256*mpu.memory[address+1]
 
 
-    def disass_pane(mode, instr):
+    def disass_pane(mode, instr, syms):
         dbgwin.addstr(0,10, "Cycles: %d" % mpu.processorCycles )
 
         log_registers = "A:%02X  X:%02X  Y:%02X  S:%02X  P:%s" % ( mpu.a, mpu.x, mpu.y, mpu.sp, ( itoa(mpu.p, 2).rjust(8, '0') ) )
@@ -118,10 +143,22 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step, logfile):
             dbgwin.addstr(6,4, log_forth_reg1 )
             dbgwin.addstr(7,4, log_forth_reg2 )
 
+            # Show disassembled code
             instr.append( curr_instr )
             instr = instr[-hist_depth:] # keep last "hist_depth"
             for i in range(len(instr)):
                 dbgwin.addstr(12+i,0, instr[i] )
+
+            # Show latest symbols
+            if symbols:
+                curr_symbol = getSymbol(mpu.pc)
+                if curr_symbol != syms[-1]:
+                    syms.append( curr_symbol )
+                    # syms.append( "%04X: %s" % (mpu.pc, curr_symbol) )
+                syms = syms[-symbol_depth:] # keep last "symbol_depth"
+                line_symbols=", ".join([ s for s in syms if s != "" ]) + 40*" "
+                line_symbols=line_symbols[0:40]
+                dbgwin.addstr(20,0, line_symbols )
 
             # Show some bytes before HERE
             for j in [1,0]:
@@ -203,7 +240,7 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step, logfile):
     # mode_step = 0       # continuous execution
     mode_step = 1       # step by step execution
 
-    disass_pane(mode_step, instr)
+    disass_pane(mode_step, instr, syms)
     curses.doupdate()
 
     run_next_step = 0
@@ -214,12 +251,6 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step, logfile):
 
         if not queue_step.empty():
             mode_step = queue_step.get()
-            if mode_step == 0:  # back to continuous mode: we clear the disass part
-                instr = hist_depth*[38*" "] # blank line! we erase!
-                for i in range(len(instr)):
-                    dbgwin.addstr(12+i,0, instr[i] )
-                for i in range(5):
-                    dbgwin.addstr(28-i,0, instr[i] )
             
             run_next_step = 1
 
@@ -239,7 +270,7 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step, logfile):
             mpu.memory[0x0201]=queue.get()
             nmi()
 
-        disass_pane(mode_step, instr)
+        disass_pane(mode_step, instr, syms)
 
         curses.doupdate()
         time.sleep(delay)
@@ -254,6 +285,8 @@ def exit():
     quit()
 
 def main(stdscr):
+    global symbols
+
     if curses.has_colors() == True:
         curses.start_color()
         curses.use_default_colors()
@@ -293,6 +326,9 @@ def main(stdscr):
         logfile = open(args.logfile, "w")  # a=append mode
     else:
         logfile=None
+
+    if args.symbols:
+        symbols=parseSymbolsFile(args.symbols)
 
     # create computer thread
     t=threading.Thread( target=cpuThreadFunction, args=("", cpuwin, dbgwin, queue, queue_step, logfile) )
