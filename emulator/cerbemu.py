@@ -15,11 +15,14 @@ from py65.devices.mpu65c02 import MPU as CMOS65C02
 from py65.utils.conversions import itoa
 from py65.memory import ObservableMemory
 
+# stats = open("/tmp/stats", "w")
+
 # Argument parsing
 parser = argparse.ArgumentParser()
 parser.add_argument('-r','--rom', help='binary rom file', default="forth.bin")
 parser.add_argument('-a','--addr', help='address to load to', default=0xC000)
 parser.add_argument('-l','--logfile', help='filename of log', default=None)
+parser.add_argument('-s','--symbols', help='symbols file', default=None)
 args = parser.parse_args()
 
 
@@ -85,34 +88,47 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step, logfile):
 
 
     def disass_pane(mode, instr):
-        log_pc = "PC: %04X Cycles: %d" % ( mpu.pc, mpu.processorCycles )
-        dbgwin.addstr(0,0, log_pc )
+        dbgwin.addstr(0,10, "Cycles: %d" % mpu.processorCycles )
 
         log_registers = "A:%02X  X:%02X  Y:%02X  S:%02X  P:%s" % ( mpu.a, mpu.x, mpu.y, mpu.sp, ( itoa(mpu.p, 2).rjust(8, '0') ) )
-        dbgwin.addstr(2,0, log_registers )
-
-        dbgwin.addstr(4,0, "LINE: %04X ROW: %02X COL: %02X " % ( getWord(addr_LINE), getByte(addr_ROW), getByte(addr_COL) ) )
 
         _w=getWord(addr_W)
         _ip=getWord(addr_IP)
         log_forth_reg1 = " W: %04X  IP: %04X" % ( _w, _ip )
-        dbgwin.addstr(6,4, log_forth_reg1 )
 
-        log_forth_reg2 = "G1: %04X  G2: %04X" % ( getWord(addr_G1), getWord(addr_G2) )
-        dbgwin.addstr(7,4, log_forth_reg2 )
-
-        dbgwin.addstr(8,0, "LATEST: %04X  DP: %04X" % ( getWord(addr_LATEST), getWord(addr_DP) ) )
+        _here = getWord(addr_DP)
+        dbgwin.addstr(8,0, "LATEST: %04X  DP: %04X" % ( getWord(addr_LATEST), _here ) )
 
         curr_instr = render_instr( [ "%04X" % mpu.pc, "%02X" % getByte(mpu.pc), "%02X" % getByte(mpu.pc+1), "%02X" % getByte(mpu.pc+2) ] )
 
         if logfile:
             logfile.write(" | ".join([log_registers, log_forth_reg1, curr_instr]) + "\n")
 
-        if mode == 1:
+        # stats.write("%10d %s\n" % ( mpu.processorCycles, curr_instr ) )
+
+        if mode == 1: #step-by-step mode
+            # these registers will only be updated in step-by-step mode
+            dbgwin.addstr(0, 0, "PC: %04X" % mpu.pc )
+
+            dbgwin.addstr(2,0, log_registers )
+
+            dbgwin.addstr(4,0, "LINE: %04X ROW: %02X COL: %02X " % ( getWord(addr_LINE), getByte(addr_ROW), getByte(addr_COL) ) )
+
+            log_forth_reg2 = "G1: %04X  G2: %04X" % ( getWord(addr_G1), getWord(addr_G2) )
+            dbgwin.addstr(6,4, log_forth_reg1 )
+            dbgwin.addstr(7,4, log_forth_reg2 )
+
             instr.append( curr_instr )
             instr = instr[-hist_depth:] # keep last "hist_depth"
             for i in range(len(instr)):
-                dbgwin.addstr(11+i,0, instr[i] )
+                dbgwin.addstr(12+i,0, instr[i] )
+
+            # Show some bytes before HERE
+            for j in [1,0]:
+                a=_here-9-10*j
+                dbgwin.addstr(10-j, 0, "%04X:" % (a) )
+                for i in range(10):
+                    dbgwin.addstr(10-j, 6+3*i, "%02X" % getByte( a+i ) )
 
             # Show Data Stack
             for i in range(5):
@@ -193,15 +209,15 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step, logfile):
     run_next_step = 0
 
     while not exit_event.is_set():
-        if mpu.pc == 0xC706 : # breakpoint
-            queue_step.put(1)
+        # if mpu.pc == 0xC706 : # breakpoint
+        #     queue_step.put(1)
 
         if not queue_step.empty():
             mode_step = queue_step.get()
             if mode_step == 0:  # back to continuous mode: we clear the disass part
                 instr = hist_depth*[38*" "] # blank line! we erase!
                 for i in range(len(instr)):
-                    dbgwin.addstr(11+i,0, instr[i] )
+                    dbgwin.addstr(12+i,0, instr[i] )
                 for i in range(5):
                     dbgwin.addstr(28-i,0, instr[i] )
             
@@ -212,6 +228,8 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step, logfile):
 
         if mode_step == 1:
             run_next_step = 0
+
+        # stats.write("%d %04X" % ( mpu.pc, mpu.processorCycles ) )
 
         mpu.step()
 
