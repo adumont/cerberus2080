@@ -1630,7 +1630,6 @@ _KEY:
 @eos:	; refill input string
 	JSR getline	
 	BRA @retry	; and try again
-	RTS	; // TODO is it ever reached??
 
 defword "EXEC",,
 ; ( ADDR -- )
