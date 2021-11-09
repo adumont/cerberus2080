@@ -35,6 +35,7 @@ For now I've taken Andy Toone's 0xFE BIOS as code base, and I have made some min
 - Enhanced memory dump formatting (all caps, always two digit) with ASCII dump
 - After a `list` command (dump), you can use page-up/down keys to browse the memory.
 - You can specify the address where to run your code from with  `run ADDR` (default is C000 for 6502, 0202 for z80).
+- Use `crc A1 A2` to compute the CRC32 of memory range from address A1 to A2.
 - Added a couple of build options (see in Makefile):
   - JINGLE_OFF: disable the boot Jingle
   - SOUND_FEEDBACK_OFF: disable the keys feedback sound

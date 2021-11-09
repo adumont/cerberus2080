@@ -38,6 +38,9 @@
 /* Source: https://github.com/PaulStoffregen/TimerOne */
 #include <TimerOne.h>
 
+/* Source: https://github.com/bakercp/CRC32 */
+#include <CRC32.h>
+
 /* Pinout below defined as per Arduino Uno pin IDs */
 /* The next pins go to SPACER */
 #define SI A5     /* PC5  Serial Input, pin 28 on CAT */
@@ -515,6 +518,11 @@ void enter() {  /* Called when the user presses ENTER, unless a CPU program is b
     nextWord = getNextWord(false);        /* Get the file name from the edit line */
     nextNextWord = getNextWord(false);    /* Get memory address */
     load(nextWord, nextNextWord, false);
+  /* CRC *********************************************************************************/
+  } else if (nextWord == F("crc")) {
+    nextWord = getNextWord(false);      // start addr
+    nextNextWord = getNextWord(false);  // end  addr
+    crc(nextWord, nextNextWord);
   /* RUN **********************************************************************************/
   } else if (nextWord == F("run")) {      /* Runs the code in memory */
     for (i = 0; i < 38; i++) previousEditLine[i] = editLine[i]; /* Store edit line just executed */
@@ -847,6 +855,44 @@ void save(String startAddr, String endAddr, String filename) {
     }
   }
 }
+
+void crc(String startAddr, String endAddr) {
+  /* Compute CRC32 of a region of memory */
+  uint16_t start, finish;
+  uint16_t i;    /* Memory address counter */
+  CRC32 crc;
+  crc.reset();
+
+  if (startAddr == "") {
+    cprintStatus(STATUS_MISSING_OPERAND);
+    return;
+  }
+
+  if (endAddr == "") {
+    cprintStatus(STATUS_MISSING_OPERAND);
+    return;
+  }
+
+  start = strtol(startAddr.c_str(), NULL, 16);    /* Convert to hexadecimal number */
+  finish = strtol(endAddr.c_str(), NULL, 16);     /* Convert to hexadecimal number */
+
+  if (finish < start) {
+    cprintStatus(STATUS_ADDRESS_ERROR);            /* Invalid address range */
+    return;
+  }
+
+  for(i = start; i <= finish; i++) {
+    crc.update( uint8_t(cpeek(i)) );
+  }
+
+  uint32_t crc32 = crc.finalize();
+
+  char tmp[30];
+  sprintf(tmp, "CRC: %04X.%04X", (uint16_t)(crc32>>16), (uint16_t)(crc32 & 0xFFFF));
+  Serial.println(tmp);
+  center(tmp);
+}
+
 
 void load(String filename, String address, bool silent) {
   /* Loads a binary file from the uSD card into memory */
