@@ -6,6 +6,8 @@ import time
 import os.path
 from time import sleep
 import math
+import zlib
+
 
 from glob import glob
 
@@ -31,6 +33,8 @@ def get_response(show=False):
 def cmd_send(args):
   l = os.stat(args.file).st_size
 
+  crc32 = 0
+
   addr = int(args.addr, 16)
 
   addr_start = addr
@@ -49,6 +53,7 @@ def cmd_send(args):
 
       chkA=1
       chkB=0
+      crc32 = zlib.crc32(data, crc32)
 
       for c in data:
         print("%02X " % c, end="")
@@ -84,7 +89,7 @@ def cmd_send(args):
 
       if count >= l: break
 
-  print("%d bytes written from %04X to %04X" % (addr-addr_start, addr_start, addr-1) )
+  print("%d bytes written from %04X to %04X, CRC32: %04X.%04X" % (addr-addr_start, addr_start, addr-1, crc32>>16, crc32 & 0xFFFF) )
 
 
 def cmd_run(args):
