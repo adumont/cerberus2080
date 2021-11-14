@@ -2111,21 +2111,21 @@ clear_screen:
   lda #SPACE
 
   ldy #$00
-next:
+@next:
   sta VRAM,y
   sta VRAM+$100,y
   sta VRAM+$200,y
   sta VRAM+$300,y
 
   dey
-  bne next
+  bne @next
 
   ldy #$af
-next2:
+@next2:
   sta VRAM+$400,y
 
   dey
-  bne next2
+  bne @next2
   sta VRAM+$400,y
   RTS
 
