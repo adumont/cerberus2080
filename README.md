@@ -103,10 +103,9 @@ Now it has evolved like this, showing more debug information:
 - 6502 registers and stack
 - FORTH registers and stack
 - last lines of dissassembled 6502 code
+- symbol where we are in the code (using forth.lbl file)
 
 ![](asset/Emulator.png)
-
-TODO: add symbols from forth.lbl (labels and words)
 
 ## Emulator execution modes
 
