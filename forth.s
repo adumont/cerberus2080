@@ -1663,8 +1663,16 @@ defword "WORD",,
 	CMP #KBD_RET
 	BEQ @return0
 
-	; otherwise --> start of a word (@startW)
-	bra @startW
+	CMP #'\'
+	BNE @startW
+
+	; here it's a \ comment
+@comment:
+	JSR _KEY
+
+	CMP #KBD_RET
+	BNE @comment
+	; fallthrough to @return0
 
 @return0:
 	lda BOOT
@@ -2482,6 +2490,9 @@ BOOT_PRG:
 ;	.BYTE " : TestLoop BEGIN 1 . AGAIN ; TestLoop "
 
 	.BYTE " : UNTIL LIT, 0BR , ; IMMEDIATE "
+
+	; ( is an immediate word that will swallow all characters until a ')' is found
+	.BYTE " : ( BEGIN KEY 29 = UNTIL ; IMMEDIATE " ; now we can use ( ) inline comments!
 
 	.BYTE " : PAD HERE 64 + ; " ; $64 = d100, PAD is 100 byte above HERE
  
