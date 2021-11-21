@@ -127,7 +127,9 @@ RES_vec:
 	lda #>VRAM
 	sta LINE+1
 
+.ifndef EMULATOR
 	jsr clear_screen
+.endif
 
 	ldy #0
 	sty COL
