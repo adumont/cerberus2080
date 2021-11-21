@@ -15,8 +15,6 @@ from py65.devices.mpu65c02 import MPU as CMOS65C02
 from py65.utils.conversions import itoa
 from py65.memory import ObservableMemory
 
-# stats = open("/tmp/stats", "w")
-
 # Argument parsing
 parser = argparse.ArgumentParser()
 parser.add_argument('-r','--rom', help='binary rom file', default="forth.bin")
@@ -30,28 +28,6 @@ locale.setlocale(locale.LC_ALL, '')
 code = locale.getpreferredencoding()
 
 exit_event = threading.Event()
-
-addr_W    = 0x00FE
-addr_IP	  = addr_W -2
-addr_G2	  = addr_IP-2
-addr_G1	  = addr_G2-2
-addr_LINE = addr_G1-2
-addr_ROW  = addr_LINE - 1
-addr_COL  = addr_ROW - 1
-addr_DTOP = addr_COL-2
-
-addr_MAILFLAG   = 0x0200
-addr_MAILBOX    = addr_MAILFLAG +1
-addr_LATEST 	= addr_MAILBOX  +1
-addr_MODE       = addr_LATEST +2
-addr_BOOT       = addr_MODE +1
-addr_BOOTP      = addr_BOOT +1
-addr_ERROR      = addr_BOOTP +2
-addr_INP_LEN    = addr_ERROR + 1
-addr_INPUT      = addr_INP_LEN +1
-addr_INP_IDX    = addr_INPUT + 128
-addr_OK         = addr_INP_IDX + 1
-addr_DP         = addr_OK +1
 
 symbols = None
 
@@ -73,6 +49,34 @@ def parseSymbolsFile(filename):
 
 def getSymbol(addr):
     return symbols[max(k for k in symbols if k <= addr)]
+
+def getLabelAddr(label):
+    return [ k for k in symbols if symbols[k] == label ][0]
+
+if args.symbols:
+    symbols=parseSymbolsFile(args.symbols)
+
+addr_W    = 0x00FE
+addr_IP          = addr_W -2
+addr_G2          = addr_IP-2
+addr_G1          = addr_G2-2
+addr_LINE = addr_G1-2
+addr_ROW  = addr_LINE - 1
+addr_COL  = addr_ROW - 1
+addr_DTOP = addr_COL-2
+
+addr_MAILFLAG   = getLabelAddr("MAILFLAG")
+addr_MAILBOX    = getLabelAddr("MAILBOX")
+addr_LATEST 	= getLabelAddr("LATEST")
+addr_MODE       = getLabelAddr("MODE")
+addr_BOOT       = getLabelAddr("BOOT")
+addr_BOOTP      = getLabelAddr("BOOTP")
+addr_ERROR      = getLabelAddr("ERROR")
+addr_INP_LEN    = getLabelAddr("INP_LEN")
+addr_INPUT      = getLabelAddr("INPUT")
+addr_INP_IDX    = getLabelAddr("INP_IDX")
+addr_OK         = getLabelAddr("OK")
+addr_DP         = getLabelAddr("DP")
 
 def cpuThreadFunction(ch,win,dbgwin, queue, queue_step, logfile):
     global symbols
@@ -317,9 +321,6 @@ def main(stdscr):
         logfile = open(args.logfile, "w")  # a=append mode
     else:
         logfile=None
-
-    if args.symbols:
-        symbols=parseSymbolsFile(args.symbols)
 
     # create computer thread
     t=threading.Thread( target=cpuThreadFunction, args=("", cpuwin, dbgwin, queue, queue_step, logfile) )
