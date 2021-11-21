@@ -13,14 +13,13 @@ from py65.memory import ObservableMemory
 from collections import defaultdict
 from disass import decode
 
-# stats = open("/tmp/stats", "w")
-
 # Argument parsing
 parser = argparse.ArgumentParser()
 parser.add_argument('-r','--rom', help='binary rom file', default="forth.bin")
 parser.add_argument('-a','--addr', help='address to load to', default=0xC000)
 parser.add_argument('-l','--logfile', help='filename of log', default=None)
 parser.add_argument('-s','--symbols', help='symbols file', default="forth.lbl")
+parser.add_argument('-t','--trace', help='trace file', default=None)
 args = parser.parse_args()
 
 locale.setlocale(locale.LC_ALL, '')
@@ -98,7 +97,8 @@ last_pc=0
 
 addr_BOOT = getLabelAddr("BOOT")
 
-file = open("/tmp/stats", "w")
+if args.trace:
+    file = open("/tmp/stats", "w")
 
 while True:
     # print("%04X %04X %d" % (mpu.pc, last_pc, mpu.processorCycles-last_processorCycles))
@@ -111,7 +111,8 @@ while True:
 
     c = '.' if mpu.a < 32 or mpu.a > 126 else mpu.a
 
-    file.write("%d %04X %s %02X %c %02X %02X %d %s %s\n" % ( mpu.processorCycles, last_pc, opcode, mpu.a, c, mpu.x, mpu.y, mpu.processorCycles-last_processorCycles, label, sublabel ) )
+    if args.trace:
+        file.write("%d %04X %s %02X %c %02X %02X %d %s %s\n" % ( mpu.processorCycles, last_pc, opcode, mpu.a, c, mpu.x, mpu.y, mpu.processorCycles-last_processorCycles, label, sublabel ) )
 
     last_processorCycles = mpu.processorCycles
     last_pc = mpu.pc
@@ -121,7 +122,8 @@ while True:
     if mpu.memory[addr_BOOT] == 0:
         break
 
-file.close()
+if args.trace:
+    file.close()
 
 print("processorCycles:", mpu.processorCycles)
 
