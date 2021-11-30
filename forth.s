@@ -1693,10 +1693,23 @@ defword "WORD",,
 ; Find next word in input buffer (and advance INP_IDX)
 ; ( -- ADDR LEN )
 
+	lda #' '
+	bra _parse
+
+defword "PARSE",,
+; parse input buffer with separator SEPR (and advance INP_IDX)
+; ( -- ADDR LEN )
+
+	lda 2,x
+	inx
+	inx
+_parse:
+	sta SEPR
+
 @next1:
 	JSR _KEY
 	
-	CMP #' '
+	CMP SEPR
 	BEQ @next1
 
 	CMP #KBD_RET
@@ -1744,7 +1757,7 @@ defword "WORD",,
 @next2:
 	JSR _KEY
 
-	CMP #' '
+	CMP SEPR
 	BEQ @endW
 
 	CMP #KBD_RET
@@ -2468,6 +2481,8 @@ BOOT_PRG:
 	.BYTE " : ' WORD FIND >CFA ; " ; is this ever used?
 	; .BYTE " : STOP BREAK ; IMMEDIATE "
 
+	.BYTE " : CHAR 20 PARSE DROP C@ ;"
+
 	; LIT, is an alias for COMPILE, it's shorter ;)
 	.BYTE " : IF LIT, 0BR HERE HERE++ ; IMMEDIATE "
 	.BYTE " : THEN HERE SWAP ! ; IMMEDIATE "
@@ -2588,12 +2603,13 @@ MAILBOX:  .res 1
 LATEST:	  .res 2	; Store the latest ADDR of the Dictionary
 MODE:	  .res 1	; <>0 Execute, 0 compile
 BOOT:	  .res 1	; <>0 Boot, 0 not boot anymore
+SEPR:	  .res 1	; Separator for parsing input
 BOOTP:	  .res 2	; pointer to BOOTstrap code
 ERROR:	  .res 1	; Error when converting number
 INP_LEN:  .res 1	; Length of the text in the input buffer
 INPUT:	  .res 128	; CMD string (extend as needed, up to 256!)
 INP_IDX:  .res 1	; Index into the INPUT Buffer (for reading it with KEY)
-OK:		.res 1	; 1 -> show OK prompt
+OK:		  .res 1	; 1 -> show OK prompt
 DP:		  .res 2	; Data Pointer: Store the latest ADDR of next free space in RAM (HERE)
 
 ; Base of user memory area.
