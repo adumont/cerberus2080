@@ -1516,7 +1516,7 @@ noheader "STAR_LOOP"
 	BNE :+
 	LDA $101,X	; LO I
 	CMP $103,X	; LO END
-:	BMI @loop_again
+:	BCC @loop_again
 
 ; Here we exit the LOOP
 	; Remove I and END from 6502 Hw Stack
