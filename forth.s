@@ -1316,11 +1316,6 @@ defword "KEY",,
 ; leaves it in A
 ; advance INP_IDX. when reached end of buffer, we refill
 _KEY:
-	; INPUT --> W
-	LDA #<INPUT
-	STA W
-	LDA #>INPUT
-	STA W+1
 @retry:
 	; INP_IDX --> Y
 	LDY INP_IDX
@@ -1328,7 +1323,7 @@ _KEY:
 	CPY INP_LEN	; reached end of input string?
 	BEQ @eos
 
-	LDA (W),Y	; load char at (W)+Y in A
+	LDA INPUT,Y	; load char at INPUT,Y in A
 	INC INP_IDX	; ALEX: do we need this?
 	RTS
 	
@@ -1842,11 +1837,13 @@ _parse:
 	; First we store the ADDR on stack
 	LDA INP_IDX
 	STA G1	; we save Y in G1, temporarily
+
+	; Addr of INPUT + INP_IDX (in A) -1 --> ToS
 	DEA
 	CLC
-	ADC W
+	ADC #<INPUT
 	STA 0,X
-	LDA W+1		;
+	LDA #>INPUT
 	ADC #0		; replace with BCC skip / INC ?
 	STA 1,X		;
 	DEX
@@ -2438,7 +2435,8 @@ boot_refill:
 	STA G1+1
 
 	DEY
-@next:	INY
+@next:
+	INY
 	LDA (G1),Y
 
 	CMP #$20 ; space
@@ -2467,7 +2465,7 @@ boot_refill:
 	BEQ @eobc	; $00, end of boostrap code
 
 	; save char to INPUT (even if it's a separator)
-	STA (W),Y
+	STA INPUT,Y
 	INY
 
 	CMP #$20 ; space
