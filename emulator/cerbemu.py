@@ -60,7 +60,8 @@ addr_W    = 0x00FE
 addr_IP          = addr_W -2
 addr_G2          = addr_IP-2
 addr_G1          = addr_G2-2
-addr_LINE = addr_G1-2
+addr_DP          = addr_G1-2
+addr_LINE = addr_DP-2
 addr_ROW  = addr_LINE - 1
 addr_COL  = addr_ROW - 1
 addr_DTOP = addr_COL-2
@@ -76,7 +77,6 @@ addr_INP_LEN    = getLabelAddr("INP_LEN")
 addr_INPUT      = getLabelAddr("INPUT")
 addr_INP_IDX    = getLabelAddr("INP_IDX")
 addr_OK         = getLabelAddr("OK")
-addr_DP         = getLabelAddr("DP")
 
 def cpuThreadFunction(ch,win,dbgwin, queue, queue_step, logfile):
     global symbols

@@ -62,11 +62,12 @@ W	= $FE		; 2 bytes, an address
 IP	= W -2
 G2	= IP-2		; general purpose register
 G1	= G2-2		; general purpose register
+DP  = G1-2    ; Data/Dictionary Pointer: Store the latest ADDR of next free space in RAM (HERE)
 
 MAX_LEN = $80		; Input Buffer MAX length, $80= 128 bytes
 
 ; Cerberus Screen management
-LINE = G1-2 ; $FE and $FF       ; ADDR (2 bytes), store a LINE ADDR
+LINE = DP-2 ; $FE and $FF       ; ADDR (2 bytes), store a LINE ADDR
 ROW = LINE - 1 
 COL = ROW - 1
 
@@ -589,17 +590,12 @@ defword "COMPILE",,
 ; we call COMPILE, addr
 compile_addr:	; label so we we can jump here from the alias "LIT,"
 	; IP points to the [ADDR] that we want to commit
-	; put DP in G1 in ZP
-	LDA DP
-	STA G1
-	LDA DP+1
-	STA G1+1
 	; (IP)-->(DP)
 	LDY #1
 	LDA (IP)
-	STA (G1)
+	STA (DP)
 	LDA (IP),y
-	STA (G1),y
+	STA (DP),y
 	; Add 2 to G2
 	CLC
 	LDA IP
@@ -824,8 +820,10 @@ defword "DP",,
 ;	.ADDR do_LIT, CP, do_SEMI
 	LDA #<DP
 	STA 0,X
-	LDA #>DP
-	STA 1,X
+	; we can remove those two lines, as DP is not in ZP, #>DP == 0
+	; LDA #>DP
+	; STA 1,X
+	STZ 1,X
 	JMP DEX2_NEXT
 
 ; COUNT: ( addr -- addr+1 len )
@@ -975,14 +973,9 @@ defword "CCOMMA","C,",
 ; ( C -- ) save a byte C to HERE and advance
 ; HERE by 1
 ; Primitive version!
-	; put DP in G1 in ZP
-	LDA DP
-	STA G1
-	LDA DP+1
-	STA G1+1
 	; save TOS in (DP), only LO byte
 	LDA 2,X
-	STA (G1)
+	STA (DP)
 	; Drop TOS
 	INX
 	INX
@@ -2078,17 +2071,12 @@ defword "COMMA",",",
 ; ( XX -- ) save a word XX to HERE and advance
 ; HERE by 2
 ; Primitive version!
-	; put DP in G1 in ZP
-	LDA DP
-	STA G1
-	LDA DP+1
-	STA G1+1
 	; save TOS in (DP)
 	LDA 2,X
-	STA (G1)
+	STA (DP)
 	LDA 3,X
 	LDY #1
-	STA (G1),y
+	STA (DP),y
 	; Drop
 	INX
 	INX
@@ -2752,7 +2740,6 @@ INP_LEN:  .res 1	; Length of the text in the input buffer
 INPUT:	  .res 128	; CMD string (extend as needed, up to 256!)
 INP_IDX:  .res 1	; Index into the INPUT Buffer (for reading it with KEY)
 OK:		  .res 1	; 1 -> show OK prompt
-DP:		  .res 2	; Data Pointer: Store the latest ADDR of next free space in RAM (HERE)
 
 ; Base of user memory area.
 USER_BASE:
