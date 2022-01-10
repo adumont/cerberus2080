@@ -1,7 +1,11 @@
-; FORTH 
-; Alex Dumont
-
+;
+; Alex FORTH for 6502
 ; Version for Cerberus2080
+;
+; Copyright (C) 2021-2022 Alexandre Dumont <adumont@gmail.com>
+;
+; SPDX-License-Identifier: GPL-3.0-only
+;
 
 .pc02 ; 65C02 mode
 .debuginfo      +       ; Generate debug info
