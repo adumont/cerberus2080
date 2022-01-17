@@ -2595,7 +2595,7 @@ IRQ_vec:
 NMI_vec:
 	RTI
 
-VERS_STR: CString {"ALEX FORTH v0", KBD_RET}
+VERS_STR: CString {"ALEX FORTH v0", KBD_RET, "(c) 2021-2022 Alex Dumont", KBD_RET}
 WHAT_STR: CString {" ?", KBD_RET}
 OK_STR: CString {"ok "}
 
