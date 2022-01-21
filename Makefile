@@ -21,7 +21,12 @@ LIB=lib
 
 %.bin: %.s #$(LIB)/interrupt.s $(LIB)/vectors.s $(LIB)/copydata.s
 	$(CL65) $(CLFLAGS) $(OPT) -Ln $*.lbl -o $@ $^
-	@echo Flash with: ./programmer.py send $@
+	@echo
+	@if [ -z "$(EMULATOR)" ]; \
+  then echo Send to Cerberus2080 with: ./programmer.py send $@ ;\
+  else echo "Run with: emulator/cerbemu.py" ;\
+  fi
+
 
 %.h: %.bin
 	#cp $< /tmp/rom.bin
