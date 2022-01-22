@@ -440,54 +440,6 @@ defword "2DUP",,
 	STA 0,X
 	JMP DEX2_NEXT
 
-defword "ROT",,
-; ( x y z -- y z x )
-; X, stack 2 -> W
-	LDA 6,X
-	STA W
-	LDA 7,X
-	STA W+1
-; Y, stack 1 -> stack 2
-	LDA 4,X
-	STA 6,X
-	LDA 5,X
-	STA 7,X
-; Z, stack 0 -> stack 1
-	LDA 2,X
-	STA 4,X
-	LDA 3,X
-	STA 5,X
-; W --> Stack 0
-	LDA W
-	STA 2,X
-	LDA W+1
-	STA 3,X
-	JMP NEXT
-
-defword "NROT", "-ROT",
-; ( x y z -- z x y )
-; Stack 0 --> W
-	LDA 2,X
-	STA W
-	LDA 3,X
-	STA W+1
-; Stack 1 --> Stack 0
-	LDA 4,X
-	STA 2,X
-	LDA 5,X
-	STA 3,X
-; Stack 2 --> Stack 1
-	LDA 6,X
-	STA 4,X
-	LDA 7,X
-	STA 5,X
-; W --> Stack 2
-	LDA W
-	STA 6,X
-	LDA W+1
-	STA 7,X
-	JMP NEXT
-
 defword "OVER",,
 ; ( x y -- x y x )
 	LDA 4,X
@@ -495,16 +447,6 @@ defword "OVER",,
 	LDA 5,X
 	STA 1,X
 	JMP DEX2_NEXT
-
-defword "2DROP",,
-	INX
-	INX
-	BRA do_DROP
-
-defword "DROP",,
-	INX
-	INX
-	JMP NEXT
 
 ; Convenience BREAK word we can add in the code
 ; to force a BREAK
@@ -525,24 +467,11 @@ defword "CLSCR",,
 	jsr clear_screen
 	JMP NEXT
 
-defword "PUSH0","0",
-	STZ 0,x
-	STZ 1,x
-	JMP DEX2_NEXT
-
 defword "PUSH1","1",
 	LDA #1
 	STA 0,x
 	STZ 1,x
 	JMP DEX2_NEXT
-
-defword "TWICE","2*",
-; ( n -- 2*n )
-; n is one signed or unsigned cell
-; if n is signed, sign is kept
-	ASL 2,X
-	ROL 3,X
-	JMP NEXT
 
 defword "DTWICE","D2*",
 ; ( d -- 2*d )
@@ -604,10 +533,6 @@ defword "DHALF","D2/",
 ; 	.ADDR do_FROM_R, do_DUP, do_FETCH, do_COMMA, do_2PLUS, do_TO_R ; COMPILE R> DUP @ , CELL+ >R
 ; 	.ADDR do_SEMI
 
-defword "LIT_COMMA_ALIAS", "LIT,"
-; this is an alias for COMPILE, shorter, so it occupies less space in the bootstrap code in ROM
-	JMP compile_addr
-
 defword "COMPILE",,
 ; like doing LIT, addr, COMMA
 ; we call COMPILE, addr
@@ -661,23 +586,6 @@ defword "LIT",,
 @skip:
 	JMP DEX2_NEXT
 
-defword "DUP",,
-	LDA 2,X
-	STA 0,X
-	LDA 3,X
-	STA 1,X
-	JMP DEX2_NEXT
-	
-defword "PLUS","+",
-	CLC
-	LDA 2,X
-	ADC 4,X
-	STA 4,X
-	LDA 3,X
-	ADC 5,X
-	STA 5,X
-	JMP do_DROP
-
 defword "DPLUS","D+",
 ; Double cells sum
 ; ( d1 d2 -- sum ) where really it's ( lo1 hi1 lo2 hi2 -- losum hisum )
@@ -730,47 +638,6 @@ defword "DMINUS","D-",
 	INX
 	JMP do_DROP
 
-defword "2PLUS","2+",
-	CLC
-	LDA 2,x
-	ADC #2
-	STA 2,x
-	BCC @skip
-	INC 3,X
-@skip:	JMP NEXT
-
-defword "EMIT",,
-; EMIT emit a single char
-	; char is on stack
-	LDA 2,X
-	JSR putc
-	JMP do_DROP
-
-defword "GETC",,
-; get a single char from IO, leave on stack
-	JSR getc ; leaves the char in A
-	STA 0,X
-	STZ 1,X
-	JMP DEX2_NEXT
-
-defword "TO_R",">R",
-; >R: pop a cell (possibly an ADDR) from
-; the stack and pushes it to the Return Stack
-	LDA 3,X
-	PHA
-	LDA 2,X
-	PHA
-	JMP do_DROP
-
-defword "FROM_R","R>",
-; R>: pop a cell from the Return Stack
-; and pushes it to the Stack
-	PLA
-	STA 0,X
-	PLA
-	STA 1,X
-	JMP DEX2_NEXT
-
 defword "I",,
 ; I is same code as R@
 	BRA do_R_AT
@@ -788,34 +655,6 @@ defword "R_AT","R@",
 	LDA $0103,Y
 	STA 1,X
 	JMP DEX2_NEXT
-
-do_JUMP_OLD: ; alternative way of jumping, no Return Stack
-; (IP) points to literal address to jump to
-; instead of next instruction ;)
-	LDA (IP)
-	PHA
-	LDY #1
-	LDA (IP),y
-	STA IP+1
-	PLA
-	STA IP
-	JMP NEXT
-
-defword "CFETCH","C@",
-; c@ ( ADDR -- byte ) 
-; We read the data at the address on the 
-; stack and put the value on the stack
-	; copy address from stack to W
-	LDA 2,X	; LO
-	STA W
-	LDA 3,X	; HI
-	STA W+1
-	; Read data at (W) and save
-	; in the TOS
-	LDA (W)
-	STA 2,X
-	STz 3,X
-	JMP NEXT
 
 STRCMP:
 ; Clobbers: A, Y
@@ -872,52 +711,6 @@ defword "COUNT",,
 	JMP DEX2_NEXT
 
 
-defword "TYPE",,
-; Print a STRING	( addr len -- )
-; addr --> pointer to 1rst char of string
-; len  --> length of string (1 byte)
-	LDA 2,X		; Length (one byte, max 256)
-	BEQ @exit	; len = 0, exit
-	
-	STA G1		; we save length in G1
-	LDY #0
-	
-	; save ADDR to STR
-	LDA 4,X
-	STA W
-	LDA 5,X
-	STA W+1
-	
-@loop:	
-	LDA (W),y
-	JSR putc
-
-	INY
-	CPY G1		; Y ?= Length --> end
-	BNE @loop
-
-@exit:	INX
-	INX
-	JMP do_DROP
-
-defword "SPACE",,
-; Print a space		( -- )
-	LDA #' '
-	JSR putc
-	JMP NEXT
-
-defword "CR",,
-; Print a new line	( -- )
-	JSR _crlf
-	JMP NEXT
-
-_crlf:
-	LDA #KBD_RET ; CR
-	JSR putc
-	; LDA #KBD_RET ; LF
-	; JSR putc
-	RTS
-
 defword "XOR",,
 ; ( a b -- a^b ) bitwise XOR
 	LDA 2,X
@@ -925,16 +718,6 @@ defword "XOR",,
 	STA 4,X
 	LDA 3,X
 	EOR 5,X
-	STA 5,X
-	JMP do_DROP
-
-defword "OR",,
-; ( a b -- a|b ) bitwise OR
-	LDA 2,X
-	ORA 4,X
-	STA 4,X
-	LDA 3,X
-	ORA 5,X
 	STA 5,X
 	JMP do_DROP
 
@@ -1048,68 +831,6 @@ defword "CCOMMA","C,",
 	INC DP+1
 @skip:
 	JMP NEXT
-
-defword "UM_STAR","UM*",
-; UM*     ( un1 un2 -- ud )
-;   UM* multiplies the unsigned 16-bit integer un1 by the
-;   unsigned 16-bit integer un2 and returns the unsigned
-;   32-bit product ud.
-; calls the do_STAR_MUL word in assembler
-	JMP do_COLON
-	.ADDR do_STAR_UM_STAR
-	.ADDR do_ROT, do_DROP
-	.ADDR do_SEMI
-
-noheader "STAR_UM_STAR"
-; ( n1 n2 0 -- n1 Dproduct )
-	; we copy N2 to G1, clear G2
-	; we will use G2G1 as HILO tmp register to shift-left n2
-	; and we will add it to the partial product
-	LDA 2,X
-	STA G1
-	LDA 3,X
-	STA G1+1
-	STZ G2
-	STZ G2+1
-	; clear the place for the partial product (4 bytes = 32 bits):
-	STZ 2,X		
-	STZ 3,X
-	STZ 0,X
-	STZ 1,X
-	
-	LDY #$10	; counter 16 bits
-	
-	; Shift N1 to the right.
-@shift_right_n1:
-	LSR 5,X
-	ROR 4,X		; rightmost bit falls into carry
-	
-	BCC @shift_left_n2	; c=0, go to shift-left N2
-; c=1 --> Add N2 to the partial product
-	CLC
-	LDA G1
-	ADC 2,X
-	STA 2,X
-	LDA G1+1	
-	ADC 3,X
-	STA 3,X
-	LDA G2
-	ADC 0,X
-	STA 0,X
-	LDA G2+1	
-	ADC 1,X
-	STA 1,X
-	
-@shift_left_n2:
-	ASL G1
-	ROL G1+1
-	ROL G2
-	ROL G2+1
-	
-	DEY
-	BNE @shift_right_n1
-
-	JMP DEX2_NEXT	
 
 defword "UM_DIV_MOD","UM/MOD",
 ; Takes a Double (32bit/2 cells) dividend and
@@ -1361,13 +1082,6 @@ defword "ALLOT",,
 	.ADDR do_HERE, do_PLUS, do_DP_STORE
 	.ADDR do_SEMI
 
-defword "SP",,
-; Put Data Stack Pointer on the stack
-	TXA
-	STA 0,X
-	STZ 1,X
-	JMP DEX2_NEXT
-
 defword "CMOVE",,
 ; (src dst len -- )
 ; copy len bytes from src to dst
@@ -1396,33 +1110,6 @@ defword "CMOVE",,
 	TAX
 
 	JMP NEXT
-
-defword "KEY",,
-; Give next char in Input buffer
-; ( -- char )
-	JSR _KEY
-	STA 0,X
-	STZ 1,X
-	JMP DEX2_NEXT
-
-; internal routine that get a char from the input buffer
-; leaves it in A
-; advance INP_IDX. when reached end of buffer, we refill
-_KEY:
-@retry:
-	; INP_IDX --> Y
-	LDY INP_IDX
-
-	CPY INP_LEN	; reached end of input string?
-	BEQ @eos
-
-	LDA INPUT,Y	; load char at INPUT,Y in A
-	INC INP_IDX	; ALEX: do we need this?
-	RTS
-	
-@eos:	; refill input string
-	JSR getline	
-	BRA @retry	; and try again
 
 defword "EXEC",,
 ; ( ADDR -- )
@@ -1564,117 +1251,6 @@ noheader "STAR_SKIP_DO"
 	.ADDR do_FROM_R, do_FETCH, do_TO_R ; get the addr to skip over the DO/LOOP (and push it back to R)  R> @ >R
 	.ADDR do_SEMI
 
-defword "DO",,IMMEDIATE_FLAG
-;  : DO LIT, *DO HERE ; IMMEDIATE
-	JMP do_COLON
-	.ADDR do_PUSH0	; we leave a 0000. Not a valid ADDR. We'll use it in LOOP to know if it was a DO or ?DO
-	.ADDR do_COMPILE, do_STAR_DO
-	.ADDR do_HERE
-	.ADDR do_SEMI
-
-noheader "STAR_DO"
-; ( end start -- )
-; Used by DO
-; We don't use >R as it would mean being a colon word, and that would
-; mess with the return stack (colon world pushes next IP onto the rs)
-
-	; pushes 'end' on the Return Stack
-	LDA 5,X
-	PHA
-	LDA 4,X
-	PHA
-	; pushes 'start' on the Return Stack
-	LDA 3,X
-	PHA
-	LDA 2,X
-	PHA
-	; drop start
-	INX
-	INX
-	; drop end
-	JMP do_DROP
-
-noheader "STAR_LOOP"
-; ( INC -- )
-; Used by LOOP, +LOOP, takes the increment on the stack
-
-; *LOOP should be followed by [ADDR], so IP points to ADDR
-; where ADDR is the word after DO
-; *LOOP will either run it (ie. jump back to DO) or bypass it (ie. leaving the DO LOOP)
-
-	; Copy INC (on ToS) to G1
-	LDA 2,X
-	STA G1
-	LDA 3,X
-	STA G1+1
-
-	; Drop INC from ToS
-	INX
-	INX
-	; Save X to G2
-	TXA
-	STA G2
-
-	TSX
-	; END and I (of DO/LOOP) are on the 6502 stack, after transfering S to X
-	; we can now address them like that:
-	; $104,X $103,X [ END ]
-	; $102,X $101,X [  I  ]
-
-	; Add INC to I: I+INC -> I
-	CLC
-	LDA G1
-	ADC $101,X
-	STA $101,X
-	LDA G1+1
-	ADC $102,X
-	STA $102,X
-
-	; Compare I to END
-	; LDA $102,X	; HI I ; we can skip that line, as $102,X is in A already!
-	CMP $104,X	; HI END
-	BNE :+
-	LDA $101,X	; LO I
-	CMP $103,X	; LO END
-:	BCC @loop_again
-
-; Here we exit the LOOP
-	; Remove I and END from 6502 Hw Stack
-	INX	; INX is only 2 cycles, vs PLA 4 cycles
-	INX
-	INX
-	INX
-	TXS
-	; Restore X from G2
-	LDA G2
-	TAX
-
-	; Skip over the [ADDR]
-	; IP+2 --> IP
-	CLC
-	LDA IP
-	ADC #2		; A<-A+2
-	STA IP
-	BCC :+
-	INC IP+1
-:	JMP NEXT
-
-@loop_again:
-	; Restore X from G2
-	LDA G2
-	TAX
-
-	; IP just happen to point to [ADDR]!
-	; now we call JUMP
-	JMP do_JUMP
-
-defword "LOOP",,IMMEDIATE_FLAG
-;  : LOOP LIT, 1 LIT, *LOOP , ; IMMEDIATE
-	JMP do_COLON
-	.ADDR do_COMPILE, do_PUSH1
-	.ADDR do_JUMP, call_from_do_LOOP	; we fallback into +LOOP
-	; it's a small penalty at compile time, but code is more compact in ROM
-
 defword "PLUS_LOOP","+LOOP",IMMEDIATE_FLAG
 ;  : +LOOP LIT, *LOOP , ; IMMEDIATE " ;
 	JMP do_COLON
@@ -1790,34 +1366,12 @@ defword "DPRINT","D.",
 	JSR print_byte
 	INX
 	INX
-	BRA do_PRINT	; fallback to "."
+	JMP do_PRINT	; fallback to "."
 
 defword "CPRINT","C.",
 ; Print data on top of stack (in hex for now)
 ; ( n -- )
-	BRA cprint
-
-defword "PRINT",".",
-; Print data on top of stack (in hex for now)
-; ( n -- )
-	LDA 3,X
-	JSR print_byte
-cprint:
-	LDA 2,X
-	JSR print_byte
-	LDA #' '
-	JSR putc
-	JMP do_DROP
-
-defword "MINUS","-",
-	SEC
-	LDA 4,X
-	SBC 2,X
-	STA 4,X
-	LDA 5,X
-	SBC 3,X
-	STA 5,X
-	JMP do_DROP
+	JMP cprint
 
 defword "EQZ","0=",
 ; 0=, it's also equivalent to "logical NOT" (not a bitwise NOT)
@@ -1839,31 +1393,39 @@ defword "EQZ","0=",
 	STA 3,X
 	JMP NEXT
 
-defword "NOT",,
-; ( a -- not(a) ) bitwise NOT
-	LDA 2,X
-	EOR #$FF
-	STA 2,X
-	LDA 3,X
-	EOR #$FF
-	STA 3,X
-	JMP NEXT
+defword "GETC",,
+; get a single char from IO, leave on stack
+	JSR getc ; leaves the char in A
+	STA 0,X
+	STZ 1,X
+	JMP DEX2_NEXT
 
-defword "1PLUS","1+",
-	INC 2,X
-	BNE @skip
-	INC 3,X
-@skip:	JMP NEXT
+defword "KEY",,
+; Give next char in Input buffer
+; ( -- char )
+	JSR _KEY
+	STA 0,X
+	STZ 1,X
+	JMP DEX2_NEXT
 
-defword "AND",,
-; ( a b -- a&b ) bitwise AND
-	LDA 2,X
-	AND 4,X
-	STA 4,X
-	LDA 3,X
-	AND 5,X
-	STA 5,X
-	JMP do_DROP
+; internal routine that get a char from the input buffer
+; leaves it in A
+; advance INP_IDX. when reached end of buffer, we refill
+_KEY:
+@retry:
+	; INP_IDX --> Y
+	LDY INP_IDX
+
+	CPY INP_LEN	; reached end of input string?
+	BEQ @eos
+
+	LDA INPUT,Y	; load char at INPUT,Y in A
+	INC INP_IDX	; ALEX: do we need this?
+	RTS
+	
+@eos:	; refill input string
+	JSR getline	
+	BRA @retry	; and try again
 
 defword "LATEST",,
 ; ( -- LATEST )
@@ -1887,23 +1449,15 @@ defword "LAST",,
 	STA 1,X
 	JMP DEX2_NEXT
 
-defword "FETCH","@",
-; @ ( ADDR -- value ) 
-; We read the data at the address on the 
-; stack and put the value on the stack
-	; copy address from stack to W
-	LDA 2,X	; LO
-	STA W
-	LDA 3,X	; HI
-	STA W+1
-	; Read data at (W) and save
-	; in the TOS
-	LDA (W)
-	STA 2,X
-	LDY #1
-	LDA (W),y
-	STA 3,X
-	JMP NEXT
+defword "OR",,
+; ( a b -- a|b ) bitwise OR
+	LDA 2,X
+	ORA 4,X
+	STA 4,X
+	LDA 3,X
+	ORA 5,X
+	STA 5,X
+	JMP do_DROP
 
 defword "SETIMM",,
 ; ( hdr -- )
@@ -1915,97 +1469,6 @@ defword "SETIMM",,
 	STA (W),Y	; LEN
 		
 	JMP do_DROP
-
-defword "WORD",,
-; Find next word in input buffer (and advance INP_IDX)
-; ( -- ADDR LEN )
-
-	lda #' '
-	bra _parse
-
-defword "PARSE",,
-; parse input buffer with separator SEPR (and advance INP_IDX)
-; ( -- ADDR LEN )
-
-	lda 2,x
-	inx
-	inx
-_parse:
-	sta SEPR
-
-@next1:
-	JSR _KEY
-	
-	CMP SEPR
-	BEQ @next1
-
-	CMP #KBD_RET
-	BEQ @return0
-
-	CMP #'\'
-	BNE @startW
-
-	; here it's a \ comment
-@comment:
-	JSR _KEY
-
-	CMP #KBD_RET
-	BNE @comment
-	; fallthrough to @return0
-
-@return0:
-	lda BOOT
-	bne :+		; if boot<>0 (aka boot mode, we don't set the prompt to 1)
-	lda #1		; we mark 1 the OK flag
-	sta OK
-:
-	stz 0,X		; we push a 0 on the stack
-	stz 1,X
-	DEX
-	DEX
-	stz 0,X		; we push another 0 on the stack
-	stz 1,X
-	JMP DEX2_NEXT	; exit "WORD"
-
-; start of word
-@startW:
-	; First we store the ADDR on stack
-	LDA INP_IDX
-	STA G1	; we save Y in G1, temporarily
-
-	; Addr of INPUT + INP_IDX (in A) -1 --> ToS
-	DEA
-	CLC
-	ADC #<INPUT
-	STA 0,X
-	LDA #>INPUT
-	ADC #0		; replace with BCC skip / INC ?
-	STA 1,X		;
-	DEX
-	DEX
-@next2:
-	JSR _KEY
-
-	CMP SEPR
-	BEQ @endW
-
-	CMP #KBD_RET
-	BEQ @return
-
-	BRA @next2
-@return:
-	lda BOOT
-	bne @endW	; if boot<>0 (aka boot mode, we don't set the prompt to 1)
-	lda #1		; we mark 1 the OK flag
-	sta OK
-@endW:
-	; compute length
-	LDA INP_IDX
-	SEC
-	SBC G1	; earlier we saved INP_IDX in G1 ;)
-	STA 0,X
-	STZ 1,X
-	JMP DEX2_NEXT
 
 defword "FIND",,
 ; ( ADDRi LEN -- ADDRo )
@@ -2108,6 +1571,223 @@ defword "FIND",,
 	STA 5,X
 	JMP do_DROP
 
+defword "SPACE",,
+; Print a space		( -- )
+	LDA #' '
+	JSR putc
+	JMP NEXT
+
+defword "TYPE",,
+; Print a STRING	( addr len -- )
+; addr --> pointer to 1rst char of string
+; len  --> length of string (1 byte)
+	LDA 2,X		; Length (one byte, max 256)
+	BEQ @exit	; len = 0, exit
+	
+	STA G1		; we save length in G1
+	LDY #0
+	
+	; save ADDR to STR
+	LDA 4,X
+	STA W
+	LDA 5,X
+	STA W+1
+	
+@loop:	
+	LDA (W),y
+	JSR putc
+
+	INY
+	CPY G1		; Y ?= Length --> end
+	BNE @loop
+
+@exit:	INX
+	INX
+	JMP do_DROP
+
+defword "UM_STAR","UM*",
+; UM*     ( un1 un2 -- ud )
+;   UM* multiplies the unsigned 16-bit integer un1 by the
+;   unsigned 16-bit integer un2 and returns the unsigned
+;   32-bit product ud.
+; calls the do_STAR_MUL word in assembler
+	JMP do_COLON
+	.ADDR do_STAR_UM_STAR
+	.ADDR do_ROT, do_DROP
+	.ADDR do_SEMI
+
+noheader "STAR_UM_STAR"
+; ( n1 n2 0 -- n1 Dproduct )
+	; we copy N2 to G1, clear G2
+	; we will use G2G1 as HILO tmp register to shift-left n2
+	; and we will add it to the partial product
+	LDA 2,X
+	STA G1
+	LDA 3,X
+	STA G1+1
+	STZ G2
+	STZ G2+1
+	; clear the place for the partial product (4 bytes = 32 bits):
+	STZ 2,X		
+	STZ 3,X
+	STZ 0,X
+	STZ 1,X
+	
+	LDY #$10	; counter 16 bits
+	
+	; Shift N1 to the right.
+@shift_right_n1:
+	LSR 5,X
+	ROR 4,X		; rightmost bit falls into carry
+	
+	BCC @shift_left_n2	; c=0, go to shift-left N2
+; c=1 --> Add N2 to the partial product
+	CLC
+	LDA G1
+	ADC 2,X
+	STA 2,X
+	LDA G1+1	
+	ADC 3,X
+	STA 3,X
+	LDA G2
+	ADC 0,X
+	STA 0,X
+	LDA G2+1	
+	ADC 1,X
+	STA 1,X
+	
+@shift_left_n2:
+	ASL G1
+	ROL G1+1
+	ROL G2
+	ROL G2+1
+	
+	DEY
+	BNE @shift_right_n1
+
+	JMP DEX2_NEXT	
+
+defword "WORD",,
+; Find next word in input buffer (and advance INP_IDX)
+; ( -- ADDR LEN )
+
+	lda #' '
+	bra _parse
+
+defword "PARSE",,
+; parse input buffer with separator SEPR (and advance INP_IDX)
+; ( -- ADDR LEN )
+
+	lda 2,x
+	inx
+	inx
+_parse:
+	sta SEPR
+
+@next1:
+	JSR _KEY
+	
+	CMP SEPR
+	BEQ @next1
+
+	CMP #KBD_RET
+	BEQ @return0
+
+	CMP #'\'
+	BNE @startW
+
+	; here it's a \ comment
+@comment:
+	JSR _KEY
+
+	CMP #KBD_RET
+	BNE @comment
+	; fallthrough to @return0
+
+@return0:
+	lda BOOT
+	bne :+		; if boot<>0 (aka boot mode, we don't set the prompt to 1)
+	lda #1		; we mark 1 the OK flag
+	sta OK
+:
+	stz 0,X		; we push a 0 on the stack
+	stz 1,X
+	DEX
+	DEX
+	stz 0,X		; we push another 0 on the stack
+	stz 1,X
+	JMP DEX2_NEXT	; exit "WORD"
+
+; start of word
+@startW:
+	; First we store the ADDR on stack
+	LDA INP_IDX
+	STA G1	; we save Y in G1, temporarily
+
+	; Addr of INPUT + INP_IDX (in A) -1 --> ToS
+	DEA
+	CLC
+	ADC #<INPUT
+	STA 0,X
+	LDA #>INPUT
+	ADC #0		; replace with BCC skip / INC ?
+	STA 1,X		;
+	DEX
+	DEX
+@next2:
+	JSR _KEY
+
+	CMP SEPR
+	BEQ @endW
+
+	CMP #KBD_RET
+	BEQ @return
+
+	BRA @next2
+@return:
+	lda BOOT
+	bne @endW	; if boot<>0 (aka boot mode, we don't set the prompt to 1)
+	lda #1		; we mark 1 the OK flag
+	sta OK
+@endW:
+	; compute length
+	LDA INP_IDX
+	SEC
+	SBC G1	; earlier we saved INP_IDX in G1 ;)
+	STA 0,X
+	STZ 1,X
+	JMP DEX2_NEXT
+
+defword "2PLUS","2+",
+	CLC
+	LDA 2,x
+	ADC #2
+	STA 2,x
+	BCC @skip
+	INC 3,X
+@skip:
+	JMP NEXT
+
+defword "TWICE","2*",
+; ( n -- 2*n )
+; n is one signed or unsigned cell
+; if n is signed, sign is kept
+	ASL 2,X
+	ROL 3,X
+	JMP NEXT
+
+defword "CR",,
+; Print a new line	( -- )
+	JSR _crlf
+	JMP NEXT
+
+_crlf:
+	LDA #KBD_RET ; CR
+	JSR putc
+	; LDA #KBD_RET ; LF
+	; JSR putc
+	RTS
+
 defword "CFA",">CFA",
 	; ( HDR -- CFA )
 	; takes the addr to the header of a word
@@ -2136,6 +1816,148 @@ defword "CFA",">CFA",
 	STA 3,X
 	JMP NEXT
 
+defword "DO",,IMMEDIATE_FLAG
+;  : DO LIT, *DO HERE ; IMMEDIATE
+	JMP do_COLON
+	.ADDR do_PUSH0	; we leave a 0000. Not a valid ADDR. We'll use it in LOOP to know if it was a DO or ?DO
+	.ADDR do_COMPILE, do_STAR_DO
+	.ADDR do_HERE
+	.ADDR do_SEMI
+
+noheader "STAR_DO"
+; ( end start -- )
+; Used by DO
+; We don't use >R as it would mean being a colon word, and that would
+; mess with the return stack (colon world pushes next IP onto the rs)
+
+	; pushes 'end' on the Return Stack
+	LDA 5,X
+	PHA
+	LDA 4,X
+	PHA
+	; pushes 'start' on the Return Stack
+	LDA 3,X
+	PHA
+	LDA 2,X
+	PHA
+	; drop start
+	INX
+	INX
+	; drop end
+	JMP do_DROP
+
+defword "LOOP",,IMMEDIATE_FLAG
+;  : LOOP LIT, 1 LIT, *LOOP , ; IMMEDIATE
+	JMP do_COLON
+	.ADDR do_COMPILE, do_PUSH1
+	.ADDR do_JUMP, call_from_do_LOOP	; we fallback into +LOOP
+	; it's a small penalty at compile time, but code is more compact in ROM
+
+noheader "STAR_LOOP"
+; ( INC -- )
+; Used by LOOP, +LOOP, takes the increment on the stack
+
+; *LOOP should be followed by [ADDR], so IP points to ADDR
+; where ADDR is the word after DO
+; *LOOP will either run it (ie. jump back to DO) or bypass it (ie. leaving the DO LOOP)
+
+	; Copy INC (on ToS) to G1
+	LDA 2,X
+	STA G1
+	LDA 3,X
+	STA G1+1
+
+	; Drop INC from ToS
+	INX
+	INX
+	; Save X to G2
+	TXA
+	STA G2
+
+	TSX
+	; END and I (of DO/LOOP) are on the 6502 stack, after transfering S to X
+	; we can now address them like that:
+	; $104,X $103,X [ END ]
+	; $102,X $101,X [  I  ]
+
+	; Add INC to I: I+INC -> I
+	CLC
+	LDA G1
+	ADC $101,X
+	STA $101,X
+	LDA G1+1
+	ADC $102,X
+	STA $102,X
+
+	; Compare I to END
+	; LDA $102,X	; HI I ; we can skip that line, as $102,X is in A already!
+	CMP $104,X	; HI END
+	BNE :+
+	LDA $101,X	; LO I
+	CMP $103,X	; LO END
+:	BCC @loop_again
+
+; Here we exit the LOOP
+	; Remove I and END from 6502 Hw Stack
+	INX	; INX is only 2 cycles, vs PLA 4 cycles
+	INX
+	INX
+	INX
+	TXS
+	; Restore X from G2
+	LDA G2
+	TAX
+
+	; Skip over the [ADDR]
+	; IP+2 --> IP
+	CLC
+	LDA IP
+	ADC #2		; A<-A+2
+	STA IP
+	BCC :+
+	INC IP+1
+:	JMP NEXT
+
+@loop_again:
+	; Restore X from G2
+	LDA G2
+	TAX
+
+	; IP just happen to point to [ADDR]!
+	; now we call JUMP
+	JMP do_JUMP
+
+defword "ROT",,
+; ( x y z -- y z x )
+; X, stack 2 -> W
+	LDA 6,X
+	STA W
+	LDA 7,X
+	STA W+1
+; Y, stack 1 -> stack 2
+	LDA 4,X
+	STA 6,X
+	LDA 5,X
+	STA 7,X
+; Z, stack 0 -> stack 1
+	LDA 2,X
+	STA 4,X
+	LDA 3,X
+	STA 5,X
+; W --> Stack 0
+	LDA W
+	STA 2,X
+	LDA W+1
+	STA 3,X
+	JMP NEXT
+
+defword "SP",,
+; Put Data Stack Pointer on the stack
+	TXA
+	STA 0,X
+	STZ 1,X
+	JMP DEX2_NEXT
+
 defword "0BR",,
 ; Branch to Label if 0 on stack
 	LDA 2,X
@@ -2157,6 +1979,39 @@ defword "0BR",,
 	INC IP+1
 @skip:
 
+	JMP do_DROP
+
+defword "AND",,
+; ( a b -- a&b ) bitwise AND
+	LDA 2,X
+	AND 4,X
+	STA 4,X
+	LDA 3,X
+	AND 5,X
+	STA 5,X
+	JMP do_DROP
+
+defword "CFETCH","C@",
+; c@ ( ADDR -- byte ) 
+; We read the data at the address on the 
+; stack and put the value on the stack
+	; copy address from stack to W
+	LDA 2,X	; LO
+	STA W
+	LDA 3,X	; HI
+	STA W+1
+	; Read data at (W) and save
+	; in the TOS
+	LDA (W)
+	STA 2,X
+	STz 3,X
+	JMP NEXT
+
+defword "EMIT",,
+; EMIT emit a single char
+	; char is on stack
+	LDA 2,X
+	JSR putc
 	JMP do_DROP
 
 defword "JUMP",,
@@ -2198,27 +2053,97 @@ defword "COMMA",",",
 	; Advance HERE by 1 cell
 	BRA do_HEREPP
 
-defword "HERE",,
-; : HERE	DP @ ;
-; Primitive version!
-	; Fetch HERE ie. (DP) and store in TOS
-	LDA DP
-	STA 0,X
-	LDA DP+1
-	STA 1,X
-	;
-	JMP DEX2_NEXT
-
-defword "SWAP",,
+defword "NOT",,
+; ( a -- not(a) ) bitwise NOT
 	LDA 2,X
-	LDY 4,X
-	STY 2,X
+	EOR #$FF
+	STA 2,X
+	LDA 3,X
+	EOR #$FF
+	STA 3,X
+	JMP NEXT
+
+defword "MINUS","-",
+	SEC
+	LDA 4,X
+	SBC 2,X
+	STA 4,X
+	LDA 5,X
+	SBC 3,X
+	STA 5,X
+	JMP do_DROP
+
+defword "PLUS","+",
+	CLC
+	LDA 2,X
+	ADC 4,X
 	STA 4,X
 	LDA 3,X
-	LDY 5,X
-	STY 3,X
+	ADC 5,X
 	STA 5,X
+	JMP do_DROP
+
+defword "1PLUS","1+",
+	INC 2,X
+	BNE @skip
+	INC 3,X
+@skip:
 	JMP NEXT
+
+defword "NROT", "-ROT",
+; ( x y z -- z x y )
+; Stack 0 --> W
+	LDA 2,X
+	STA W
+	LDA 3,X
+	STA W+1
+; Stack 1 --> Stack 0
+	LDA 4,X
+	STA 2,X
+	LDA 5,X
+	STA 3,X
+; Stack 2 --> Stack 1
+	LDA 6,X
+	STA 4,X
+	LDA 7,X
+	STA 5,X
+; W --> Stack 2
+	LDA W
+	STA 6,X
+	LDA W+1
+	STA 7,X
+	JMP NEXT
+
+defword "2DROP",,
+	INX
+	INX
+	BRA do_DROP
+
+defword "DROP",,
+	INX
+	INX
+	JMP NEXT
+
+defword "PRINT",".",
+; Print data on top of stack (in hex for now)
+; ( n -- )
+	LDA 3,X
+	JSR print_byte
+cprint:
+	LDA 2,X
+	JSR print_byte
+	LDA #' '
+	JSR putc
+	JMP do_DROP
+
+defword "PUSH0","0",
+	STZ 0,x
+	STZ 1,x
+	JMP DEX2_NEXT
+
+defword "LIT_COMMA_ALIAS", "LIT,"
+; this is an alias for COMPILE, shorter, so it occupies less space in the bootstrap code in ROM
+	JMP compile_addr
 
 defword "CSTORE","C!",
 ; C! ( value ADDR -- )
@@ -2255,6 +2180,71 @@ end_do_STORE:		; used by CSTORE (below)
 	;INX
 	;JMP NEXT 	
 	JMP do_DROP
+
+defword "HERE",,
+; : HERE	DP @ ;
+; Primitive version!
+	; Fetch HERE ie. (DP) and store in TOS
+	LDA DP
+	STA 0,X
+	LDA DP+1
+	STA 1,X
+	;
+	JMP DEX2_NEXT
+
+defword "TO_R",">R",
+; >R: pop a cell (possibly an ADDR) from
+; the stack and pushes it to the Return Stack
+	LDA 3,X
+	PHA
+	LDA 2,X
+	PHA
+	JMP do_DROP
+
+defword "FROM_R","R>",
+; R>: pop a cell from the Return Stack
+; and pushes it to the Stack
+	PLA
+	STA 0,X
+	PLA
+	STA 1,X
+	JMP DEX2_NEXT
+
+defword "FETCH","@",
+; @ ( ADDR -- value ) 
+; We read the data at the address on the 
+; stack and put the value on the stack
+	; copy address from stack to W
+	LDA 2,X	; LO
+	STA W
+	LDA 3,X	; HI
+	STA W+1
+	; Read data at (W) and save
+	; in the TOS
+	LDA (W)
+	STA 2,X
+	LDY #1
+	LDA (W),y
+	STA 3,X
+	JMP NEXT
+
+defword "DUP",,
+	LDA 2,X
+	STA 0,X
+	LDA 3,X
+	STA 1,X
+	JMP DEX2_NEXT
+	
+defword "SWAP",,
+	LDA 2,X
+	LDY 4,X
+	STY 2,X
+	STA 4,X
+	LDA 3,X
+	LDY 5,X
+	STY 3,X
+	STA 5,X
+	JMP NEXT
 
 ;-----------------------------------------------------------------
 ; p_LATEST point to the latest defined word (using defword macro)
