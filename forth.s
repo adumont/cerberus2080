@@ -698,6 +698,18 @@ defword "QDUP","?DUP",
 	JMP do_DUP
 :	JMP NEXT
 
+defword "J","J",
+	PHX	;\
+	TSX	; \
+	TXA	;  | put SP into Y
+	TAY	; / (a bit involved...)
+	PLX	;/ we mess A,Y, but don't care...
+	LDA $0106,Y
+	STA 0,X
+	LDA $0107,Y
+	STA 1,X
+	JMP DEX2_NEXT
+
 defword "I",,
 ; I is same code as R@
 	BRA do_R_AT
@@ -2514,9 +2526,6 @@ scroll_up:
   rts
 
 ; END CERBERUS IO SCREEN ROUTINES
-
-
-
 
 
 ; Input Buffer Routines
