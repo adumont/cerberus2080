@@ -241,8 +241,8 @@ def cpuThreadFunction(ch,win,dbgwin, queue, queue_step, logfile):
     run_next_step = 0
 
     while not exit_event.is_set():
-        # if mpu.pc == 0xC706 : # breakpoint
-        #     queue_step.put(1)
+        if mpu.pc == getLabelAddr("do_BREAK") : # breakpoint
+            queue_step.put(1)
 
         if not queue_step.empty():
             mode_step = queue_step.get()
