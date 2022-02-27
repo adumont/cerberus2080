@@ -137,7 +137,7 @@ void setup() {
   AOE_LOW;
   LD_LOW;
   SC_LOW;
-  digitalWrite(CPUSPD, LOW);
+  digitalWrite(CPUSPD, HIGH); // Make CPU FAST by default!
   digitalWrite(CPUSLC, LOW);
   digitalWrite(CPUIRQ, LOW);
   CPUGO_LOW;
