@@ -70,8 +70,9 @@ COL = ROW - 1
 VRAM = $F800
 BP   = $F000 - 2	; top of LOCALS stack (grows down). Right below the character memory
 
-MAX_ROW = 30
-MAX_COL = 40
+MIN_ROW = 0		; we can set that any value in [0,28] to split the screen
+MAX_ROW = 30	; Row will go from MIN_ROW to MAX_ROW-1
+MAX_COL = 40	; Col will go from 0 to MAX_COL-1
 CURSOR  = '_'
 SPACE   = ' '
 ; End Cerberus Screen management
@@ -118,13 +119,19 @@ RES_vec:
 	CLI
 
 	; start at line 0, col 0
+.if (MIN_ROW>0)
+	lda #MIN_ROW
+	sta ROW
+.else
 	stz ROW
+.endif
+
 	stz COL
 
-	; store addr of line 0
-	lda #<VRAM
+	; store addr of first line
+	lda #<(VRAM+MIN_ROW*MAX_COL)
 	sta LINE
-	lda #>VRAM
+	lda #>(VRAM+MIN_ROW*MAX_COL)
 	sta LINE+1
 
 .ifndef EMULATOR
@@ -496,13 +503,18 @@ defword "BREAK",,
 
 ; Clear Screen (and bring cursor back HOME)
 defword "CLSCR",,
+.if (MIN_ROW>0)
+	lda #MIN_ROW
+	sta ROW
+.else
 	stz ROW
+.endif
 	stz COL
 
-	; store addr of line 0
-	lda #<VRAM
+	; store addr of first line
+	lda #<(VRAM+MIN_ROW*MAX_COL)
 	sta LINE
-	lda #>VRAM
+	lda #>(VRAM+MIN_ROW*MAX_COL)
 	sta LINE+1
 
 	jsr clear_screen
@@ -2409,7 +2421,7 @@ putc:
 	; we are at the beginning of a line:
 	; if first line: can't do anything
 	lda ROW
-	cmp #0
+	cmp #MIN_ROW
 	beq @erase
 	; otherwise: move up 1 line:
 	dea
@@ -2483,68 +2495,14 @@ clear_screen:
 
 
 scroll_up:
-  ; Scroll screen UP (and clears last line), long... ¿fast?
+  ; Scroll screen UP (and clears last line), (unrolled)
   phy
   ldy #00
 @next:
-  lda $F828,y
-  sta $F800,y
-  lda $F850,y 
-  sta $F828,y
-  lda $F878,y 
-  sta $F850,y
-  lda $F8A0,y 
-  sta $F878,y
-  lda $F8C8,y 
-  sta $F8A0,y
-  lda $F8F0,y 
-  sta $F8C8,y
-  lda $F918,y 
-  sta $F8F0,y
-  lda $F940,y 
-  sta $F918,y
-  lda $F968,y 
-  sta $F940,y
-  lda $F990,y 
-  sta $F968,y
-  lda $F9B8,y 
-  sta $F990,y
-  lda $F9E0,y 
-  sta $F9B8,y
-  lda $FA08,y 
-  sta $F9E0,y
-  lda $FA30,y 
-  sta $FA08,y
-  lda $FA58,y 
-  sta $FA30,y
-  lda $FA80,y 
-  sta $FA58,y
-  lda $FAA8,y 
-  sta $FA80,y
-  lda $FAD0,y 
-  sta $FAA8,y
-  lda $FAF8,y 
-  sta $FAD0,y
-  lda $FB20,y 
-  sta $FAF8,y
-  lda $FB48,y 
-  sta $FB20,y
-  lda $FB70,y 
-  sta $FB48,y
-  lda $FB98,y 
-  sta $FB70,y
-  lda $FBC0,y 
-  sta $FB98,y
-  lda $FBE8,y 
-  sta $FBC0,y
-  lda $FC10,y 
-  sta $FBE8,y
-  lda $FC38,y 
-  sta $FC10,y
-  lda $FC60,y 
-  sta $FC38,y
-  lda $FC88,y 
-  sta $FC60,y
+.repeat (MAX_ROW-MIN_ROW-1), I
+  lda VRAM + MAX_COL * (MIN_ROW + I+1),y
+  sta VRAM + MAX_COL * (MIN_ROW + I  ),y
+.endrepeat
   lda #SPACE
   sta $FC88,y
   iny
