@@ -86,7 +86,7 @@ KBD_BACK = $08  ; Backspace
 .else
 ; key codes on Cerberus
 KBD_RET  = $0D  ; Return
-KBD_BACK = $7F  ; Backspace
+KBD_BACK = $08  ; Backspace
 .endif
 
 IMMEDIATE_FLAG = $80
@@ -2539,8 +2539,10 @@ getline:
 	CMP #KBD_BACK ; Backspace, CTRL-H
 	BEQ @bkspace
 
+.ifdef EMULATOR
 	CMP #$7F    ; Backspace key on Linux?
 	BEQ @bkspace
+.endif
 
 	CPY #MAX_LEN
 	BEQ @maxlen

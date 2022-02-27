@@ -39,7 +39,7 @@
 // for each "special" key.  To ignore a key, use zero.
 #define PS2_TAB				9
 #define PS2_ENTER			13
-#define PS2_BACKSPACE			127
+#define PS2_BACKSPACE			8
 #define PS2_ESC				27
 #define PS2_INSERT			0
 #define PS2_DELETE			127
@@ -48,7 +48,7 @@
 #define PS2_PAGEUP			25
 #define PS2_PAGEDOWN			26
 #define PS2_UPARROW			11
-#define PS2_LEFTARROW			8
+#define PS2_LEFTARROW			6
 #define PS2_DOWNARROW			10
 #define PS2_RIGHTARROW			21
 #define PS2_F1				0

@@ -339,6 +339,7 @@ void loop() {
           }
           break;
 
+        case PS2_BACKSPACE:
         case PS2_DELETE:
         case PS2_LEFTARROW:
           /* If DEL, BACKSPACE or LEFT ARROW have been pressed... */
