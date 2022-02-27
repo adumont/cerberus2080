@@ -162,7 +162,7 @@ void setup() {
   /* Clear edit line */
   clearEditLine();
   storePreviousLine();
-  Serial.begin(9600);
+  Serial.begin(115200);
    
   /* Initialize keyboard library */
   keyboard.begin(DataPin, IRQpin, PS2Keymap_Spanish);

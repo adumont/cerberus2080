@@ -66,7 +66,7 @@ def cmd_send(args):
       print("#%04X" % chks, end="")
       ser.write( str.encode( "#%04X\r" % chks ) )
 
-      sleep(0.05)
+      # sleep(0.01)
 
       b="".join([chr(i) for i in get_response(show=False) ])
       b=b.strip()
@@ -142,7 +142,7 @@ if __name__ == '__main__':
 
   ser = serial.Serial(
       port=port,
-      baudrate=9600,
+      baudrate=115200,
       parity=serial.PARITY_NONE,
       stopbits=serial.STOPBITS_ONE,
       bytesize=serial.EIGHTBITS,
