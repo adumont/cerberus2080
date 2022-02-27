@@ -1,38 +1,44 @@
-ifdef EMULATOR
-  CFG:=emulator.cfg
-  OPT:= --asm-define EMULATOR
-else
-  CFG:=cerberus.cfg
-endif
-
-include Version.mk
-
 # build tools & options
 CL65 = cl65
-CLFLAGS  = -v -d -t none -O --cpu 65c02 -C $(LIB)/$(CFG) -m $*.map
-HEXDUMP = hexdump
-HEXDUMP_ARGS = -v -e '1/1 "%02x " "\n"'
-XXD = xxd
-XXD_ARGS = -i
+CLFLAGS  = -v -d -t none -O --cpu 65c02 -C $(LIB)/$(CFG)\
+  -m  $(basename $@).map\
+  -Ln $(basename $@).lbl
+
 LIB=lib
 
-%.hex: %.bin
-	$(HEXDUMP) $(HEXDUMP_ARGS) $< > $@
+.DEFAULT_GOAL := run
 
-%.bin: %.s #$(LIB)/interrupt.s $(LIB)/vectors.s $(LIB)/copydata.s
-	$(CL65) $(CLFLAGS) $(OPT) -Ln $*.lbl -o $@ $^
-	@echo
-	@if [ -z "$(EMULATOR)" ]; \
-  then echo Send to Cerberus2080 with: ./programmer.py send $@ ;\
-  else echo "Run with: emulator/cerbemu.py" ;\
-  fi
+## For the Emulator
 
+forth-emu.bin: forth.s
+	$(eval CFG := emulator.cfg)
+	$(CL65) $(CLFLAGS) --asm-define EMULATOR -o $@ $<
 
-%.h: %.bin
-	#cp $< /tmp/rom.bin
-	#( cd /tmp; $(XXD) $(XXD_ARGS) rom.bin ) > $@
-	xxd -i $< | sed -e "s/unsigned char $*_bin\[\]/const byte rom_bin\[\] PROGMEM/" > $@
-	cp $@ ../mega/rom.h
+emu: forth-emu.bin
+
+run: forth-emu.bin
+	emulator/cerbemu.py
+
+## For the HW (Cerberus2080)
+
+forth-hw.bin: forth.s
+	$(eval CFG := cerberus.cfg)
+	$(CL65) $(CLFLAGS) -o $@ $<
+
+hw: forth-hw.bin
+
+send: forth-hw.bin
+	./programmer.py send $<
+
+## HELP
+
+help:
+	@echo "usage: make [run | send]"
+	@echo ""
+	@echo "  emu:   build the rom for the Cerberus2080 emulator"
+	@echo "  run:   execute the rom in Cerberus2080 emulator"
+	@echo "  hw:    build the rom for a Cerberus2080 computer"
+	@echo "  send:  send the rom to a Cerberus computer"
 
 clean:
 	-rm -f lib/*.o *.o *.hex *.map *.bin *.h *.lbl
