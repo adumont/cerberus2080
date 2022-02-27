@@ -89,7 +89,24 @@ def cmd_send(args):
 
       if count >= l: break
 
-  print("%d bytes written from %04X to %04X, CRC32: %04X.%04X" % (addr-addr_start, addr_start, addr-1, crc32>>16, crc32 & 0xFFFF) )
+  crc32_file = "%04X.%04X" % (crc32>>16, crc32 & 0xFFFF)
+
+  print("%d bytes written from %04X to %04X, CRC32: %s" % (addr-addr_start, addr_start, addr-1, crc32_file) )
+
+  # Check CRC on Cerberus
+  print("Computing CRC32 on Cerberus: ", end="", flush=True)
+  ser.write( str.encode( "CRC %04X %04X\r" % (addr_start, addr-1) ) )
+
+  b="".join([chr(i) for i in get_response(show=False) ])
+  b=b.strip()
+  b=b.split(" ")
+  crc32_cerberus=b[1]
+  print(crc32_cerberus, end="")
+
+  if crc32_file != crc32_cerberus:
+    print(" KO: checksum mismatch")
+
+  print(' \u2713')
 
 
 def cmd_run(args):
