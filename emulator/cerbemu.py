@@ -23,6 +23,7 @@ parser.add_argument('-l','--logfile', help='filename of log', default=None)
 parser.add_argument('-s','--symbols', help='symbols file', default="forth-emu.lbl")
 args = parser.parse_args()
 
+# stats = open("/tmp/stats", "w")  # a=append mode
 
 locale.setlocale(locale.LC_ALL, '')
 code = locale.getpreferredencoding()

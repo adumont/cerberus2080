@@ -84,9 +84,15 @@ DTOP	= COL-2		; Stack TOP
 KBD_RET  = $0A  ; Return
 KBD_BACK = $08  ; Backspace
 .else
-; key codes on Cerberus
-KBD_RET  = $0D  ; Return
-KBD_BACK = $08  ; Backspace
+	.ifdef LINKING
+	; key codes on Cerberus
+	KBD_RET  = $0D  ; Return
+	KBD_BACK = $08  ; Backspace
+	.else
+	; key codes on Emulator
+	KBD_RET  = $0A  ; Return
+	KBD_BACK = $08  ; Backspace
+	.endif
 .endif
 
 IMMEDIATE_FLAG = $80
@@ -135,39 +141,79 @@ RES_vec:
 	sta LINE+1
 
 .ifndef EMULATOR
-	jsr clear_screen
+	; Target = Cerberus2080
+	.ifdef LINKING
+		; target = real hw
+		jsr clear_screen
+	.else
+		; target is xcompiler emu
+		; we pad same size as jsr clear_screen (3 bytes = 3 nop)
+		nop
+		nop
+		nop
+	.endif
 .endif
 
 	ldy #0
 	sty COL
 	stz MAILFLAG
 
-
-.ifdef ACIA
-	JSR acia_init
-.endif
-
-; store the ADDR of the latest word to
-; LATEST variable:
-
+.ifdef LINKING
+	; When building Stage 2 (linking)
+	; last.dat will restore the value we saved in Stage 1, after compiling the bootstrap code
+	.ifdef EMULATOR
+		.include "last-emu.dat"
+	.else
+		.include "last-hw.dat"
+	.endif
+.else
+	; Normal mode, we use labels to set 
+	; LATEST:
 	LDA #<p_LATEST
 	STA LATEST
 	LDA #>p_LATEST
 	STA LATEST+1
 
+	; "HERE"
 	LDA #<USER_BASE
 	STA DP
 	LDA #>USER_BASE
 	STA DP+1
+.endif
 
+	; Used only in cross-compilation
+	; HERE_ROM <- USER_BASE_ROM
+	LDA #<USER_BASE_ROM
+	STA HERE_ROM
+	LDA #>USER_BASE_ROM
+	STA HERE_ROM+1
+
+	stz TO_ROM	; clear TO_ROM flag, by default we compile to RAM
+	
 	; Initialize bootP (pointer into Bootstrap code)
 	LDA #<BOOT_PRG
 	STA BOOTP
 	LDA #>BOOT_PRG
 	STA BOOTP+1
 
+.ifdef LINKING
+	; set the OK flag
+	sta OK
+.else	
 	; clear the OK flag
 	stz OK
+.endif
+
+	; Here we copy the RAM block image (from the compiled dictionary)
+	; to RAM
+	LDY #(end_ram_image-start_ram_image+1)
+	CPY #1
+	BEQ skip_copy_ram_block
+:	LDA start_ram_image-1,y
+	STA RAM_BLOCK_DEST-1,Y
+	DEY
+	BNE :-
+skip_copy_ram_block:
 
   ; clear the PRT0 flag (print leading 0)
   stz PRT0
@@ -363,6 +409,64 @@ commitN:
 	.ADDR do_JUMP, loop1
 
 ;------------------------------------------------------
+
+defword "_BP","_BP",
+	LDA #<BP
+	STA 0,X
+	LDA #>BP
+	STA 1,X
+	JMP DEX2_NEXT
+
+defword "DTOP",,
+	LDA #<DTOP
+	STA 0,X
+	LDA #>DTOP
+	STA 1,X
+	JMP DEX2_NEXT
+
+defword "TO_ROM",">ROM",
+; Used for cross-compilation
+	; check we were compiling to RAM (TO_ROM==0?)
+	; if TO_ROM != 0 we were already in >ROM mode, skip
+	LDA TO_ROM
+	BNE	@skip
+	; we were compiling to RAM, switch to ROM area
+	; HERE_RAM <- HERE
+	LDA DP
+	STA HERE_RAM
+	LDA DP+1
+	STA HERE_RAM+1
+	; HERE <- HERE_ROM
+	LDA HERE_ROM
+	STA DP
+	LDA HERE_ROM+1
+	STA DP+1
+	; update TO_ROM flag to !=0
+	STA TO_ROM
+@skip:
+	JMP NEXT
+
+defword "TO_RAM",">RAM",
+; Used for cross-compilation
+	; check first that we were compiling to ROM (TO_ROM!=0?)
+	; if TO_ROM == 0 we were already in >RAM mode, skip
+	LDA TO_ROM
+	BEQ	@skip
+	; we were compiling to ROM, switch to RAM area
+	; HERE_ROM <- HERE
+	LDA DP
+	STA HERE_ROM
+	LDA DP+1
+	STA HERE_ROM+1
+	; HERE <- HERE_RAM
+	LDA HERE_RAM
+	STA DP
+	LDA HERE_RAM+1
+	STA DP+1
+	; clear TO_ROM flag
+	STZ TO_ROM
+@skip:
+	JMP NEXT
 
 noheader "CLEAR_OK"
 	; clears the OK flag
@@ -2388,11 +2492,21 @@ p_LATEST = .ident(.sprintf("__word_%u", __word_last))
 ;-----------------------------------------------------------------
 ; BEGIN CERBERUS IO SCREEN ROUTINES
 
+start_io_routines_block:
+.ifdef LINKING
+; Stage 2 => Real target => real I/O routines
+
 getc:
 	jsr put_cursor
 @wait_key:
 .ifndef EMULATOR
-  wai       ; I can't make it work in py65
+	.ifdef LINKING
+		; target = real hw
+		wai       ; I can't make it work in py65
+	.else
+		; xcompiler for Cerberus2080 target
+		nop
+	.endif
 .endif
   lda MAILFLAG
   beq @wait_key
@@ -2494,6 +2608,27 @@ putc:
 
 	ply
 	rts
+
+.else
+; Stage 1 => Target = xcompiler => simpler I/O routine
+
+IO_AREA = $F000
+
+getc:
+	LDA IO_AREA+4
+
+	BEQ getc
+	RTS
+
+putc:
+	STA IO_AREA+1
+	RTS
+
+.endif
+
+; we pad the block to the same size as real routines
+end_io_routines_block:
+.res $7A-(end_io_routines_block-start_io_routines_block)
 
 ;--------------------------------------
 
@@ -2797,149 +2932,46 @@ VERS_STR: CString {"ALEX FORTH v0", KBD_RET, "(c) 2021-2022 Alex Dumont", KBD_RE
 WHAT_STR: CString {" ?", KBD_RET}
 OK_STR: CString {"ok "}
 
+; we set the address of USER_BASE_ROM right after the bootstrap code (if any)
+USER_BASE_ROM:
+
+start_rom_image:
+.ifdef LINKING
+.out "Including rom.dat"
+.ifdef EMULATOR
+	.incbin "rom-emu.dat"
+.else
+	.incbin "rom-hw.dat"
+.endif
+.endif
+end_rom_image:
+
+start_ram_image:
+.ifdef LINKING
+.out "Including ram.dat"
+.ifdef EMULATOR
+	.incbin "ram-emu.dat"
+.else
+	.incbin "ram-hw.dat"
+.endif
+.endif
+end_ram_image:
+
 ; Bootstrap code:
 ; At this point we can extend our forth in forth
 ; Must end with $00. That will exit BOOTstrap mode and
 ; enter the interpreter
 BOOT_PRG:
-	; .BYTE " PRMP" ; Shows ok prompt to user
-	; .BYTE " ", $00
+.ifdef LINKING
+	; We can add things here, they will be compiled at boot time.
+	; This was superseeded by cross-compilation of the bootstrap code
+	; But it's still available. This will note run in Stage 1.
 
-	.BYTE " : ? @ . ; "
-	.BYTE " : = - 0= ; "
-	.BYTE " : NEG NOT 1+ ; " ; ( N -- -N ) Negate N (returns -N)
-	.BYTE " : 0< 8000 AND ; " ; ( N -- F ) Is N strictly negative? Returns non 0 (~true) if N<0
-	.BYTE " : IMMEDIATE LAST SETIMM ; "	; sets the latest word IMMEDIATE
-	.BYTE " : ' WORD FIND >CFA ; " ; is this ever used?
-	.BYTE " : [,] , ; IMMEDIATE "
-	; .BYTE " : STOP BREAK ; IMMEDIATE "
-
-	.BYTE " : CHAR 20 PARSE DROP C@ ;"
-
-	; LIT, is an alias for COMPILE, it's shorter ;)
-	.BYTE " : IF LIT, 0BR HERE HERE++ ; IMMEDIATE "
-	.BYTE " : THEN HERE SWAP ! ; IMMEDIATE "
-	.BYTE " : ELSE LIT, JUMP HERE HERE++ SWAP HERE SWAP ! ; IMMEDIATE "
-
-; TEST IF
-;	.BYTE " : T IF AAAA ELSE BBBB THEN ; "
-;	.BYTE " 1 T . " ; should output AAAA
-;	.BYTE " 0 T . " ; should output BBBB
-
-	.BYTE " : BEGIN HERE ; IMMEDIATE "
-	.BYTE " : AGAIN LIT, JUMP , ; IMMEDIATE "
-
-; TEST BEGIN AGAIN
-;	.BYTE " : TestLoop BEGIN 1 . AGAIN ; TestLoop "
-
-	.BYTE " : UNTIL LIT, 0BR , ; IMMEDIATE "
-
-	; ( is an immediate word that will swallow all characters until a ')' is found
-	.BYTE " : ( BEGIN KEY 29 = UNTIL ; IMMEDIATE " ; now we can use ( ) inline comments!
-
-	.BYTE " : PAD HERE 64 + ; " ; $64 = d100, PAD is 100 byte above HERE
- 
-; TEST BEGIN UNTIL
-;	.BYTE " : T 5 BEGIN DUP . CR 1 - DUP 0= UNTIL ; T "
-
-	.BYTE " : WHILE LIT, 0BR HERE HERE++ ; IMMEDIATE "
-	.BYTE " : REPEAT LIT, JUMP SWAP , HERE SWAP ! ; IMMEDIATE "
-	
-; Test BEGIN WHILE REPEAT
-;	.BYTE " : T 6 BEGIN 1 - DUP WHILE DUP . REPEAT DROP ; T "
-
-; DO LOOP
-;	.BYTE " : DO LIT, *DO HERE ; IMMEDIATE " ;
-;	.BYTE " : LOOP LIT, 1 LIT, *LOOP , ; IMMEDIATE " ;
-;	.BYTE " : +LOOP LIT, *LOOP , ; IMMEDIATE " ;
-
-; Test DO-LOOP
-;	.BYTE " : TEST1 6 1 DO I . LOOP ; TEST1 " ; Count from 1 to 5
-;	.BYTE " : TEST2 A 0 DO I . 2 +LOOP ; TEST2 " ; Count from 0 to 8, 2 by 2
-
-	.BYTE " : >D DUP 0< 0= 0= ; " ; Extends signed cell into signed double (0= 0= will convert any non 0 into FFFF)
-
-	; UM+     ( un1 un2 -- ud )
-	;  Add two unsigned single numbers and return a double sum
-	.BYTE " : UM+ 0 SWAP 0 D+ ; "
-
-; some more stack words
-	.BYTE " : NIP SWAP DROP ; " ; ( x1 x0 -- x0 ) removes second on stack
-	.BYTE " : PICK 1+ 2* SP@ + @ ; " ; ( xn ... x1 x0 n -- xn ... x1 x0 xn ) , removes n, push copy of xn on top. n>=0
-	.BYTE " : DEPTH "
-	.BYTE .sprintf("%X", DTOP)
-	.BYTE  " SP@ - 2/ ; "
-	.BYTE " : .S DEPTH DUP IF 1+ DUP 1 DO DUP I - PICK . LOOP CR THEN DROP ; " ; print stack, leave cells on stack
-
-	; Double version of stack words
-	.BYTE " : 2SWAP >R -ROT R> -ROT ; "
-	.BYTE " : 2ROT >R >R 2SWAP R> R> 2SWAP ; "
-	.BYTE " : 2>R R> -ROT SWAP >R >R >R ; "
-	.BYTE " : 2R> R> R> R> SWAP ROT >R ; "
-
-	.BYTE " : DU< D- NIP 0< ; " ; ( d1 d2 -- f ) returns wether d1<d2
-	.BYTE " : M+ >D D+ ; " ; ( d1 n2 -- d3 ) d3=d1+n2
-
-	.BYTE " : DNEG SWAP NOT SWAP NOT 1 0 D+ ; " ; ( D -- -D ) Negate double-signed D (returns -D)
-
-	.BYTE " : S. DUP 0< IF 2D EMIT NEG THEN . ; "   ; Print as SIGNED integer
-	.BYTE " : DS. DUP 0< IF 2D EMIT DNEG THEN D. ; " ; Print as SIGNED double
-
-	.BYTE " : * UM* DROP ; "
-
-; Local variables support (up to 4 locals)
-;	We only support 4 locals (x,y,z,t in that order!)
-;	If you need 2 locals, use "2 LOCALS" then in the word you can use x,y
-;   /!\ At the end of the word, we need to use -LOCALS to free the locals
-
-; 	Local variable storage grows downwards from BP (see address defined in assembly code)
-; 	No safety checks are done to avoid running over the dictionary!
-
-	.BYTE " VARIABLE BP "		; defines BP variable (Base Pointer)
-	.BYTE .sprintf("%X", BP)	; put the address on the stack
-	.BYTE " BP !"				; store in BP
-	.BYTE " : LOCALS  BP @ DUP ROT 2* - DUP -ROT ! BP ! ;" ; ( n -- ) Allocates n local variables
-	.BYTE " : -LOCALS BP DUP @ @ SWAP ! ;" ; ( n -- ) Dellocates n local variables
-
-	.BYTE " : L@ BP @ + @ ;" ; ( n -- value) helper word to get local var n
-	.BYTE " : L! BP @ + ! ;" ; ( n -- value) helper word to save to local var n
-
-	.BYTE " : x 2 L@ ; : x! 2 L! ;"
-	.BYTE " : y 4 L@ ; : y! 4 L! ;"
-	.BYTE " : z 6 L@ ; : z! 6 L! ;"
-	.BYTE " : t 8 L@ ; : t! 8 L! ;"
-; End of Local variables support
-
-	; Recursivity
-	; to do RECURSIVE words, we can force a REVEAL of a word by using [ REVEAL ] in its definition
-	; or uncomment this RECURSIVE definition and use it inside its definition:
-	; .BYTE " : RECURSIVE REVEAL ; IMMEDIATE "
-
-	.BYTE " : DUMP SWAP DUP . DO I C@ C. LOOP ; " ; ( addr1 addr2 -- ) dumps memory from addr1 to addr2
-
-; .NAME ( hdr -- ) takes the addr of the header of a Word in dictionary and print its name
-; it will also print a "*" after the word if the word is hidden in the dictionary
-	.BYTE " : .NAME DUP 2+ DUP C@ DUP 40 AND >R 1F AND SWAP 1+ SWAP TYPE R> IF SPACE 2A EMIT THEN ; "
-; WORDS ( -- ) list all the words in the dictionary
-; Format is : HEADER CFA NAME
-; Press [qQ] to stop listing, any other key to continue (I use GETC to get a char from input)
-	.BYTE " : WORDS 0 LATEST BEGIN @ DUP WHILE DUP . DUP >CFA . .NAME CR SWAP 1+ DUP 10 = IF GETC 20 OR 71 = IF 2DROP EXIT THEN DROP 0 THEN SWAP REPEAT 2DROP ; " ; 16 words per "page"
-
-	.BYTE " : VALUE CREATE , DOES> @ ;"
-	.BYTE " : CONSTANT VALUE ;"
-	.BYTE " : TO ' 7 + ?EXEC IF ! ELSE LIT, LIT , LIT, ! THEN ; IMMEDIATE"
-	.BYTE " : DEFER CREATE 0 , DOES> @ EXEC ;"
-	.BYTE " : POSTPONE ' , ; IMMEDIATE"
-	.BYTE " : IS POSTPONE TO ; IMMEDIATE"
-
-	.BYTE " : .( [ ' S( , ] ?EXEC IF TYPE ELSE LIT, TYPE THEN ; IMMEDIATE"
-
-	.BYTE " MARKER " ; so we can return to this point using FORGET
-	.BYTE " PRMP" ; Shows ok prompt to user
-
+	; .BYTE " : T .( Hello world!) ;"
+.endif
+	; keep outside the ifdef/endif, as we always want to end the BOOT_PRG with $00
 	.BYTE " ", $00
 
-;	*= $0200
 .segment  "BSS"
 
 MAILFLAG: .res 1
@@ -2956,9 +2988,14 @@ INP_IDX:  .res 1	; Index into the INPUT Buffer (for reading it with KEY)
 OK:		  .res 1	; 1 -> show OK prompt
 PRT0:  .res 1  ; flag we use to know if we print leading zeros. <0 we print the 0, otherwise we don't
 SCRATCH: .res 8  ; 8 bytes we can use in routines...
+HERE_RAM: .res 2	; these variable will be used by >ROM / >RAM
+HERE_ROM: .res 2	; to save/restore the HERE value (when cross compiling)
+TO_ROM:   .res 1	; flag that indicate if we're compiling to ROM
 
 BIN = SCRATCH
 BCD = SCRATCH+2
+
+RAM_BLOCK_DEST:	.res (end_ram_image-start_ram_image)
 
 ; Base of user memory area.
 USER_BASE:
