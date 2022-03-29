@@ -68,7 +68,7 @@ ROW = LINE - 1
 COL = ROW - 1
 
 VRAM = $F800
-BP   = $F000 - 2	; top of LOCALS stack (grows down). Right below the character memory
+BP   = $F000	; top of LOCALS stack (grows down). Right below the character memory
 
 MIN_ROW = 0		; we can set that any value in [0,28] to split the screen
 MAX_ROW = 30	; Row will go from MIN_ROW to MAX_ROW-1
