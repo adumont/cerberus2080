@@ -3079,8 +3079,7 @@ print_byte:
 	JSR print_nibble
 	PLA
 	AND #$0F ; LO nibble
-	JSR print_nibble
-	RTS
+	; fallthrough to print_nibble
 
 print_nibble:
 	BNE :+
