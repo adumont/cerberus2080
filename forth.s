@@ -2192,10 +2192,9 @@ defword "CR",,
 
 _crlf:
 	LDA #KBD_RET ; CR
-	JSR putc
-	; LDA #KBD_RET ; LF
 	; JSR putc
-	RTS
+	; LDA #KBD_RET ; LF
+	JMP putc
 
 defword "CFA",">CFA",
 	; ( HDR -- CFA )
@@ -2980,9 +2979,7 @@ getline:
 	BRA @next
 @finish:
 	STY INP_LEN
-	JSR _crlf
-	RTS
-
+	JMP _crlf
 
 ; boot_refill will refill only one token (word) from BOOT_PRG
 ; into INPUT buffer. Not super efficient I guess...
@@ -3092,7 +3089,7 @@ print_nibble:
 	ADC #$66
 @skip:
 	EOR #$30
-	JSR putc
+	JMP putc
 :
 	RTS
 
