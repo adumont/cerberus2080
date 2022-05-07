@@ -8,6 +8,8 @@ LIB=lib
 
 .DEFAULT_GOAL := run
 
+all: hw emu
+
 # At the moment, LINKING <=> STAGE2
 # TODO: replace with STAGE1 flag and invert logic (ifdef => ifndef)
 
