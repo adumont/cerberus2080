@@ -811,7 +811,7 @@ defword "DMINUS","D-",
 
 defword "QDUP","?DUP",
 	LDA 2,X
-	EOR 3,X
+	ORA 3,X
 	BEQ :+
 	JMP do_DUP
 :	JMP NEXT
