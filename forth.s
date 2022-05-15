@@ -64,7 +64,7 @@ MAX_LEN = $80		; Input Buffer MAX length, $80= 128 bytes
 
 ; Cerberus Screen management
 LINE = DP-2 ; $FE and $FF       ; ADDR (2 bytes), store a LINE ADDR
-ROW = LINE - 1 
+ROW = LINE - 1
 COL = ROW - 1
 
 VRAM = $F800
@@ -77,7 +77,7 @@ CURSOR  = '_'
 SPACE   = ' '
 ; End Cerberus Screen management
 
-DTOP	= COL-2		; Stack TOP	
+DTOP	= COL-2		; Stack TOP
 
 .ifdef EMULATOR
 ; key codes on Emulator
@@ -100,7 +100,7 @@ HIDDEN_FLAG = $40
 
 ; Offset of the WORD name in the label
 ; 2 bytes after the Header's addr
-HDR_OFFSET_STR = 2	
+HDR_OFFSET_STR = 2
 
 .segment  "CODE"
 
@@ -167,7 +167,7 @@ RES_vec:
 		.include "last-hw.dat"
 	.endif
 .else
-	; Normal mode, we use labels to set 
+	; Normal mode, we use labels to set
 	; LATEST:
 	LDA #<p_LATEST
 	STA LATEST
@@ -189,7 +189,7 @@ RES_vec:
 	STA HERE_ROM+1
 
 	stz TO_ROM	; clear TO_ROM flag, by default we compile to RAM
-	
+
 	; Initialize bootP (pointer into Bootstrap code)
 	LDA #<BOOT_PRG
 	STA BOOTP
@@ -202,7 +202,7 @@ RES_vec:
 .ifdef LINKING
 	; set the OK flag
 	sta OK
-.else	
+.else
 	; clear the OK flag
 	stz OK
 .endif
@@ -219,7 +219,7 @@ RES_vec:
 skip_copy_ram_block:
 
 ; This is a Direct Threaded Code based FORTH
-	
+
 ; Load the entry point of our main FORTH
 ; program and start execution (with JMP NEXT)
 	; Place forth_prog ADDR into IP register
@@ -266,33 +266,17 @@ NEXT:
 	JMP (W)
 
 ;------------------------------------------------------
-; For now, this is the Entry POint of our
+; For now, this is the Entry Point of our
 ; FORTH program.
-	
-forth_prog:
-;	.ADDR do_DUP, do_PRINT, do_CRLF	; print
 
+forth_prog:
 ; Print version string
 	.ADDR do_LIT, VERS_STR
 	.ADDR do_COUNT, do_TYPE
 
-	; .ADDR do_LIT, $0030, do_EMIT
-	; .ADDR do_LIT, $0020, do_EMIT
-	; .ADDR do_LIT, $0031, do_EMIT
-	; .ADDR do_LIT, $0032, do_EMIT
-	; .ADDR do_LIT, $0033, do_EMIT
-	; .ADDR do_LIT, $0034, do_EMIT
-	; .ADDR do_LIT, $0035, do_EMIT
-
-; test LITSTR
-
-;	.ADDR do_LITSTR
-;	.STR "FORTH"
-;	.ADDR do_COUNT, do_TYPE
-	
 ; Restart Intepreter loop:
 rsin:	.ADDR do_RSIN	; Reset Input
-	
+
 loop1:
 
 	; if OK flag is 0, don't show OK prompt
@@ -343,14 +327,14 @@ compile:
 	; ( hdr )
 	.ADDR do_DUP	; ( hdr hdr )
 	.ADDR do_GETIMM	; ( hdr imm_flag )
-	
+
 	.ADDR do_0BR, executeW ; imm_flag=0 --> Immediate! (Execute)
-	
+
 	; otherwise, let's add to dictionary
 	; ( hdr )
 	.ADDR do_CFA  ; ( cfa )
 	.ADDR do_COMMA ; ( )	; commit cfa to header
-	
+
 	.ADDR do_JUMP, loop1
 
 numscan:
@@ -389,7 +373,7 @@ removeW:
 
 cleanStack:  ; ( addr len n )
 	.ADDR do_NROT, do_2DROP ; ( n )
-	
+
 	; here we have the number N on the stack.
 	; are we in compilation mode?
 
@@ -397,7 +381,7 @@ cleanStack:  ; ( addr len n )
 
 	.ADDR do_0BR, commitN ; Mode = 0 --> CommitN to new word
 	; if not 0, continue loop (N already on the stack)
-	
+
 	.ADDR do_JUMP, loop1
 
 commitN:
@@ -547,7 +531,7 @@ defword "COLON",,
 	LDA IP		; LO
 	PHA
 
-; W+3 --> IP 
+; W+3 --> IP
 ; (Code at W was a JMP, so 3 bytes)
 	CLC
 	LDA W
@@ -696,14 +680,6 @@ defword "DHALF","D2/",
 	ROR 4,X
 	JMP NEXT
 
-; defword "COMPILE",,
-; ; like doing LIT, addr, COMMA
-; ; we call COMPILE, addr
-; 	JMP do_COLON
-; compile_addr:	; label so we we can jump here from the alias "LIT,"
-; 	.ADDR do_FROM_R, do_DUP, do_FETCH, do_COMMA, do_2PLUS, do_TO_R ; COMPILE R> DUP @ , CELL+ >R
-; 	.ADDR do_SEMI
-
 defword "COMPILE",,
 ; like doing LIT, addr, COMMA
 ; we call COMPILE, addr
@@ -836,7 +812,7 @@ defword "R_AT","R@",
 ; R@ : copy the cell from the Return Stack
 ; to the Stack
 	PHX	;\
-	TSX	; \ 
+	TSX	; \
 	TXA	;  | put SP into Y
 	TAY	; / (a bit involved...)
 	PLX	;/ we mess A,Y, but don't care...
@@ -872,7 +848,7 @@ defword "DP",,
 ;	.ADDR do_LIT, CP, do_SEMI
 	LDA #<DP
 	STA 0,X
-	; we can remove those two lines, as DP is not in ZP, #>DP == 0
+	; we can remove those two lines, as DP is now in ZP, #>DP == 0
 	; LDA #>DP
 	; STA 1,X
 	STZ 1,X
@@ -974,7 +950,7 @@ defword "GETIMM",,
 ; not set
 	STA 2,X		; set LO to LEN (not 0 ie not immediate)
 	JMP NEXT
-@isImm:	
+@isImm:
 	STZ 2,X		; clear LO, and exit
 	JMP NEXT
 
@@ -988,7 +964,7 @@ _getWordLen:
 	STA W
 	LDA 3,X
 	STA W+1
-	
+
 	LDY #2
 	LDA (W),Y	; LEN
 	RTS
@@ -999,7 +975,7 @@ defword "DP_STORE","DP!",
 	STA DP
 	LDA 3,X
 	STA DP+1
-	; 
+	;
 	JMP do_DROP
 
 defword "CCOMMA","C,",
@@ -1041,7 +1017,7 @@ noheader "STAR_UM_DIV_MOD"
 ; and returns quotient and remainder (1 cell each)
 ; ( UDdividend Udivisor -- Quotient Remainder )
 ; From: How to divide a 32-bit dividend by a 16-bit divisor.
-; By Garth Wilson (wilsonmines@dslextreme.com), 9 Sep 2002.    
+; By Garth Wilson (wilsonmines@dslextreme.com), 9 Sep 2002.
 ; SRC: http://www.6502.org/source/integers/ummodfix/ummodfix.htm
 	SEC
 	LDA     4,X     ; Subtract hi cell of dividend by
@@ -1158,7 +1134,7 @@ defword "MARKER",,
 
 	.ADDR do_COMPILE, do_DP	; DP
 	.ADDR do_COMPILE, do_STORE	; !
-	
+
 	.ADDR do_COMPILE, do_SEMI	; ;
 
 	.ADDR do_REVEAL
@@ -1223,7 +1199,7 @@ defword "NONAME",":NONAME",	; Forth Anonymous word
 	.ADDR do_JUMP, prep_cfa
 
 defword "FCOLON",":",	; Forth Colon ":"
-; get next TOKEN in INPUT and creates 
+; get next TOKEN in INPUT and creates
 ; a Header for a new word
 	JMP do_COLON
 	.ADDR do_CODE		; creates empty header
@@ -1248,10 +1224,10 @@ defword "SEMICOLON",";",IMMEDIATE_FLAG
 	JMP do_COLON
 	.ADDR do_REVEAL
 	.ADDR do_COMPILE, do_SEMI	; commits do_SEMI addr
-	
+
 	;.ADDR do_PUSH1, do_LIT, MODE, do_CSTORE ; Exits Compilation mode
 	.ADDR do_LBRAC ; Exits Compilation mode
-	
+
 	.ADDR do_SEMI
 
 defword "MODE",,
@@ -1637,7 +1613,7 @@ defword "LEAVE",,
 	.ADDR do_SEMI
 
 defword "STATE","?EXEC"		; Renamed as ?EXEC as it's 1 if EXEC mode
-; Is it immediate/execution mode? 
+; Is it immediate/execution mode?
 ; returns the value of variable MODE
 ; 0 : Compilation mode, <>0 : Execution mode
 	LDA MODE
@@ -1707,7 +1683,7 @@ defword "SQUOT","S(",IMMEDIATE_FLAG
 	.ADDR do_SWAP, do_CSTORE
 	.ADDR do_COMPILE, do_COUNT ; add COUNT to the definition
 	.ADDR do_SEMI
-	
+
 defword "DPRINT","D.",
 ; Print a double cell number (in hex for now)
 ; ( lo hi -- )
@@ -1774,9 +1750,9 @@ _KEY:
 	LDA INPUT,Y	; load char at INPUT,Y in A
 	INC INP_IDX	; ALEX: do we need this?
 	RTS
-	
+
 @eos:	; refill input string
-	JSR getline	
+	JSR getline
 	BRA @retry	; and try again
 
 defword "LATEST",,
@@ -1819,7 +1795,7 @@ defword "SETIMM",,
 
 	ORA #IMMEDIATE_FLAG	; MSB set
 	STA (W),Y	; LEN
-		
+
 	JMP do_DROP
 
 defword "FIND",,
@@ -1840,8 +1816,8 @@ defword "FIND",,
 	LDA LATEST+1
 	STA W+1
 
-	lda BOOT			; Shortcuts are only available in BOOT mode	
-	beq @nxt_word		; after boot mode, I disable them. 
+	lda BOOT			; Shortcuts are only available in BOOT mode
+	beq @nxt_word		; after boot mode, I disable them.
 						; shortcuts made it impossible to redefine those words
 
 ; shortcuts in FIND for ":" and ";"
@@ -1968,17 +1944,17 @@ defword "TYPE",,
 ; len  --> length of string (1 byte)
 	LDA 2,X		; Length (one byte, max 256)
 	BEQ @exit	; len = 0, exit
-	
+
 	STA G1		; we save length in G1
 	LDY #0
-	
+
 	; save ADDR to STR
 	LDA 4,X
 	STA W
 	LDA 5,X
 	STA W+1
-	
-@loop:	
+
+@loop:
 	LDA (W),y
 	JSR putc
 
@@ -2013,44 +1989,44 @@ noheader "STAR_UM_STAR"
 	STZ G2
 	STZ G2+1
 	; clear the place for the partial product (4 bytes = 32 bits):
-	STZ 2,X		
+	STZ 2,X
 	STZ 3,X
 	STZ 0,X
 	STZ 1,X
-	
+
 	LDY #$10	; counter 16 bits
-	
+
 	; Shift N1 to the right.
 @shift_right_n1:
 	LSR 5,X
 	ROR 4,X		; rightmost bit falls into carry
-	
+
 	BCC @shift_left_n2	; c=0, go to shift-left N2
 ; c=1 --> Add N2 to the partial product
 	CLC
 	LDA G1
 	ADC 2,X
 	STA 2,X
-	LDA G1+1	
+	LDA G1+1
 	ADC 3,X
 	STA 3,X
 	LDA G2
 	ADC 0,X
 	STA 0,X
-	LDA G2+1	
+	LDA G2+1
 	ADC 1,X
 	STA 1,X
-	
+
 @shift_left_n2:
 	ASL G1
 	ROL G1+1
 	ROL G2
 	ROL G2+1
-	
+
 	DEY
 	BNE @shift_right_n1
 
-	JMP DEX2_NEXT	
+	JMP DEX2_NEXT
 
 defword "WORD",,
 ; Find next word in input buffer (and advance INP_IDX)
@@ -2071,7 +2047,7 @@ _parse:
 
 @next1:
 	JSR _KEY
-	
+
 	CMP SEPR
 	BEQ @next1
 
@@ -2386,7 +2362,7 @@ defword "0BR",,
 	INX
 	INX
 	BRA do_JUMP	; 0?
-@not0:	
+@not0:
 
 ; Now advance IP
 ; IP+2 --> IP
@@ -2411,8 +2387,8 @@ defword "AND",,
 	JMP do_DROP
 
 defword "CFETCH","C@",
-; c@ ( ADDR -- byte ) 
-; We read the data at the address on the 
+; c@ ( ADDR -- byte )
+; We read the data at the address on the
 ; stack and put the value on the stack
 	; copy address from stack to W
 	LDA 2,X	; LO
@@ -2614,7 +2590,7 @@ end_do_STORE:		; used by CSTORE (below)
 	INX
 	;INX       ; INX INX NEXT is do_DROP
 	;INX
-	;JMP NEXT 	
+	;JMP NEXT
 	JMP do_DROP
 
 defword "HERE",,
@@ -2647,8 +2623,8 @@ defword "FROM_R","R>",
 	JMP DEX2_NEXT
 
 defword "FETCH","@",
-; @ ( ADDR -- value ) 
-; We read the data at the address on the 
+; @ ( ADDR -- value )
+; We read the data at the address on the
 ; stack and put the value on the stack
 	; copy address from stack to W
 	LDA 2,X	; LO
@@ -2670,7 +2646,7 @@ defword "DUP",,
 	LDA 3,X
 	STA 1,X
 	JMP DEX2_NEXT
-	
+
 defword "SWAP",,
 	LDA 2,X
 	LDY 4,X
@@ -2725,7 +2701,7 @@ putc:
 	ldy COL
 	sta (LINE),y
 	inc COL
-	
+
 	cpy #MAX_COL-1
 	beq @return
 
@@ -2752,7 +2728,7 @@ putc:
 	rts
 
 ; else (not last row)
-@not_last_row:  
+@not_last_row:
 	; LINE<-LINE+MAX_COL
 	clc
 	lda LINE
@@ -2784,7 +2760,7 @@ putc:
 	dea
 	sta ROW
 	; LINE -= MAX_COL
-	sec 
+	sec
 	lda LINE
 	sbc #MAX_COL
 	sta LINE
