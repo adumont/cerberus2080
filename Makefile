@@ -23,7 +23,7 @@ forth-emu-stage1.bin: forth.s
 
 # Builds the 3 .dat files, cross-compiling the bootstrap.f code
 %-emu.dat: forth-emu-stage1.bin bootstrap.f
-	./xcompiler.py -r forth-emu-stage1.bin -l bootstrap.f -a 0xC000 -t emu
+	./xcompiler.py -r forth-emu-stage1.bin -l bootstrap.f -a 0xC000 -t emu -s forth-emu-stage1.lbl
 
 ## STAGE 2
 
@@ -48,7 +48,7 @@ forth-hw-stage1.bin: forth.s
 
 # Builds the 3 .dat files, cross-compiling the bootstrap.f code
 %-hw.dat: forth-hw-stage1.bin bootstrap.f
-	./xcompiler.py -r forth-hw-stage1.bin -l bootstrap.f -a 0xC000 -t hw
+	./xcompiler.py -r forth-hw-stage1.bin -l bootstrap.f -a 0xC000 -t hw -s forth-hw-stage1.lbl
 
 ## STAGE 2
 
