@@ -13,6 +13,10 @@ all: hw emu
 # At the moment, LINKING <=> STAGE2
 # TODO: replace with STAGE1 flag and invert logic (ifdef => ifndef)
 
+# Minify the bootstrap code (remove \ comments and empty lines)
+%.f.min: %.f
+	sed -e 's/ \\ .*//; s/^\\ .*//; s/^\s*//' $< | grep -v '^\s*$$' > $@
+
 ###### For the Emulator ######
 
 ## STAGE 1
@@ -22,8 +26,8 @@ forth-emu-stage1.bin: forth.s
 	$(CL65) $(CLFLAGS) --asm-define EMULATOR -o $@ $<
 
 # Builds the 3 .dat files, cross-compiling the bootstrap.f code
-%-emu.dat: forth-emu-stage1.bin bootstrap.f
-	./xcompiler.py -r forth-emu-stage1.bin -l bootstrap.f -a 0xC000 -t emu -s forth-emu-stage1.lbl
+%-emu.dat: forth-emu-stage1.bin bootstrap.f.min
+	./xcompiler.py -r forth-emu-stage1.bin -l bootstrap.f.min -a 0xC000 -t emu -s forth-emu-stage1.lbl
 
 ## STAGE 2
 
@@ -47,8 +51,8 @@ forth-hw-stage1.bin: forth.s
 	$(CL65) $(CLFLAGS) -o $@ $<
 
 # Builds the 3 .dat files, cross-compiling the bootstrap.f code
-%-hw.dat: forth-hw-stage1.bin bootstrap.f
-	./xcompiler.py -r forth-hw-stage1.bin -l bootstrap.f -a 0xC000 -t hw -s forth-hw-stage1.lbl
+%-hw.dat: forth-hw-stage1.bin bootstrap.f.min
+	./xcompiler.py -r forth-hw-stage1.bin -l bootstrap.f.min -a 0xC000 -t hw -s forth-hw-stage1.lbl
 
 ## STAGE 2
 
