@@ -17,11 +17,18 @@ all: hw emu
 %.f.min: %.f
 	sed -e 's/ \\ .*//; s/^\\ .*//; s/^\s*//' $< | grep -v '^\s*$$' > $@
 
+### Version file ###
+
+# we compare the output with the version saved.
+# if not the same we update it
+version.dat: version.sh .force
+	./version.sh | cmp -s - $@ || ./version.sh > $@
+
 ###### For the Emulator ######
 
 ## STAGE 1
 
-forth-emu-stage1.bin: forth.s
+forth-emu-stage1.bin: forth.s version.dat
 	$(eval CFG := emulator.cfg)
 	$(CL65) $(CLFLAGS) --asm-define EMULATOR -o $@ $<
 
@@ -46,7 +53,7 @@ run: forth-emu.bin
 
 ## STAGE 1
 
-forth-hw-stage1.bin: forth.s
+forth-hw-stage1.bin: forth.s version.dat
 	$(eval CFG := emulator.cfg)
 	$(CL65) $(CLFLAGS) -o $@ $<
 
@@ -81,3 +88,5 @@ help:
 
 clean:
 	-rm -f lib/*.o *.o *.hex *.map *.bin *.h *.lbl *.dat
+
+.PHONY: .force
