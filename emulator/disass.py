@@ -1,3 +1,7 @@
+# Copyright (C) 2021-2023 Alexandre Dumont <adumont@gmail.com>
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
 # Opcodes
 # for each, we store the mnemonic and mode id (see 'modes' dict below)
 

@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+# Cerbemu
+#
+# Copyright (C) 2021-2023 Alexandre Dumont <adumont@gmail.com>
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
 import os
 import time
 import curses
